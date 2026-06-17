@@ -2,11 +2,11 @@
 -- Phase 1 Step 3
 -- Legal entities referenced by name subquery — no hardcoded UUIDs
 -- city = Aberdeen for all (AB postcodes confirm this)
--- Postcodes marked 'TBC' where not provided in seed data — update once confirmed
 
 INSERT INTO properties (
   legal_entity_id,
   address_line_1,
+  address_line_2,
   city,
   postcode,
   property_type,
@@ -20,6 +20,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'J Bhalani'),
   '46 King St',
+  NULL,
   'Aberdeen',
   'AB24 5AX',
   'studio',
@@ -32,6 +33,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'J Bhalani'),
   '26A Fraser Road',
+  NULL,
   'Aberdeen',
   'AB25 3UH',
   'apartment',
@@ -44,8 +46,9 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '470 George St',
+  NULL,
   'Aberdeen',
-  'AB25 3BH',
+  'AB25 3XH',
   'studio',
   2,
   FALSE,
@@ -56,6 +59,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '41E Froghall Road',
+  NULL,
   'Aberdeen',
   'AB24 3JL',
   'flat',
@@ -68,6 +72,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '43A Froghall Road',
+  NULL,
   'Aberdeen',
   'AB24 3JL',
   'flat',
@@ -80,6 +85,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '41A Froghall Road',
+  NULL,
   'Aberdeen',
   'AB24 3JL',
   'flat',
@@ -92,8 +98,9 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '534 George Street',
+  NULL,
   'Aberdeen',
-  'AB25 3BH',
+  'AB25 3XL',
   'apartment',
   2,
   FALSE,
@@ -104,6 +111,7 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '43H St Anns Court',
+  NULL,
   'Aberdeen',
   'AB24 3AX',
   'apartment',
@@ -112,10 +120,11 @@ VALUES
   'available'
 ),
 
--- 9. TJ Property Consultants Ltd — Plot of land, status = asset
+-- 9. TJ Property Consultants Ltd — Plot of land, status = asset, no postcode
 (
   (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
   '47 Constitution St',
+  NULL,
   'Aberdeen',
   'TBC',
   'land',
@@ -124,46 +133,50 @@ VALUES
   'asset'
 ),
 
--- 10. Devarran-II Ltd
+-- 10. Devarran-II Ltd — Basement Left
 (
   (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
   '16 Merkland Road',
+  'Basement Left',
   'Aberdeen',
-  'TBC',
+  'AB24 5PR',
   'studio',
   NULL,
   FALSE,
   'available'
 ),
 
--- 11. Devarran-II Ltd
+-- 11. Devarran-II Ltd — Basement Right
 (
   (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
   '16 Merkland Road',
+  'Basement Right',
   'Aberdeen',
-  'TBC',
+  'AB24 5PR',
   'studio',
   NULL,
   FALSE,
   'available'
 ),
 
--- 12. Devarran-II Ltd
+-- 12. Devarran-II Ltd — Ground Floor Right
 (
   (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
   '16 Merkland Road',
+  'Ground Floor Right',
   'Aberdeen',
-  'TBC',
+  'AB24 5PR',
   'flat',
   1,
   FALSE,
   'available'
 ),
 
--- 13. Devarran-II Ltd — HMO
+-- 13. Devarran-II Ltd — HMO, postcode not confirmed
 (
   (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
   '440 George St',
+  NULL,
   'Aberdeen',
   'TBC',
   'flat',
@@ -176,8 +189,9 @@ VALUES
 (
   (SELECT id FROM legal_entities WHERE name = 'N Bhalani'),
   '84C King Street',
+  NULL,
   'Aberdeen',
-  'TBC',
+  'AB24 5BA',
   'apartment',
   1,
   FALSE,
