@@ -1,7 +1,8 @@
--- PropVault Seed — Properties (14 portfolio properties)
+-- PropVault Seed — Properties (12 portfolio properties)
 -- Phase 1 Step 3
 -- Legal entities referenced by name subquery — no hardcoded UUIDs
 -- city = Aberdeen for all (AB postcodes confirm this)
+-- 47 Constitution St and 440 George St excluded — removed from portfolio
 
 INSERT INTO properties (
   legal_entity_id,
@@ -120,20 +121,7 @@ VALUES
   'available'
 ),
 
--- 9. TJ Property Consultants Ltd — Plot of land, status = asset, no postcode
-(
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
-  '47 Constitution St',
-  NULL,
-  'Aberdeen',
-  'TBC',
-  'land',
-  NULL,
-  FALSE,
-  'asset'
-),
-
--- 10. Devarran-II Ltd — Basement Left
+-- 9. Devarran-II Ltd — Basement Left
 (
   (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
   '16 Merkland Road',
@@ -172,20 +160,7 @@ VALUES
   'available'
 ),
 
--- 13. Devarran-II Ltd — HMO, postcode not confirmed
-(
-  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
-  '440 George St',
-  NULL,
-  'Aberdeen',
-  'TBC',
-  'flat',
-  3,
-  TRUE,
-  'available'
-),
-
--- 14. N Bhalani
+-- 12. N Bhalani
 (
   (SELECT id FROM legal_entities WHERE name = 'N Bhalani'),
   '84C King Street',
