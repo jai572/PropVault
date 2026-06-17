@@ -1,6 +1,6 @@
 -- PropVault Seed — Properties (12 portfolio properties)
 -- Phase 1 Step 3
--- Legal entities referenced by name subquery — no hardcoded UUIDs
+-- Legal entities referenced by name subquery — LIMIT 1 on each to guard against duplicates
 -- city = Aberdeen for all (AB postcodes confirm this)
 -- 47 Constitution St and 440 George St excluded — removed from portfolio
 
@@ -17,9 +17,9 @@ INSERT INTO properties (
 )
 VALUES
 
--- 1. J Bhalani
+-- 1. J Bhalani — 1 bed studio
 (
-  (SELECT id FROM legal_entities WHERE name = 'J Bhalani'),
+  (SELECT id FROM legal_entities WHERE name = 'J Bhalani' LIMIT 1),
   '46 King St',
   NULL,
   'Aberdeen',
@@ -30,9 +30,9 @@ VALUES
   'available'
 ),
 
--- 2. J Bhalani
+-- 2. J Bhalani — 2 bed apartment
 (
-  (SELECT id FROM legal_entities WHERE name = 'J Bhalani'),
+  (SELECT id FROM legal_entities WHERE name = 'J Bhalani' LIMIT 1),
   '26A Fraser Road',
   NULL,
   'Aberdeen',
@@ -43,9 +43,9 @@ VALUES
   'available'
 ),
 
--- 3. TJ Property Consultants Ltd
+-- 3. TJ Property Consultants Ltd — 2 bed studio
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '470 George St',
   NULL,
   'Aberdeen',
@@ -56,9 +56,9 @@ VALUES
   'available'
 ),
 
--- 4. TJ Property Consultants Ltd — HMO
+-- 4. TJ Property Consultants Ltd — 3 bed HMO
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '41E Froghall Road',
   NULL,
   'Aberdeen',
@@ -69,9 +69,9 @@ VALUES
   'available'
 ),
 
--- 5. TJ Property Consultants Ltd — HMO
+-- 5. TJ Property Consultants Ltd — 3 bed HMO
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '43A Froghall Road',
   NULL,
   'Aberdeen',
@@ -82,9 +82,9 @@ VALUES
   'available'
 ),
 
--- 6. TJ Property Consultants Ltd — HMO
+-- 6. TJ Property Consultants Ltd — 3 bed HMO
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '41A Froghall Road',
   NULL,
   'Aberdeen',
@@ -95,9 +95,9 @@ VALUES
   'available'
 ),
 
--- 7. TJ Property Consultants Ltd
+-- 7. TJ Property Consultants Ltd — 2 bed apartment
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '534 George Street',
   NULL,
   'Aberdeen',
@@ -108,9 +108,9 @@ VALUES
   'available'
 ),
 
--- 8. TJ Property Consultants Ltd
+-- 8. TJ Property Consultants Ltd — 2 bed apartment
 (
-  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'TJ Property Consultants Ltd' LIMIT 1),
   '43H St Anns Court',
   NULL,
   'Aberdeen',
@@ -121,9 +121,9 @@ VALUES
   'available'
 ),
 
--- 9. Devarran-II Ltd — Basement Left
+-- 9. Devarran-II Ltd — Studio, Basement Left
 (
-  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd' LIMIT 1),
   '16 Merkland Road',
   'Basement Left',
   'Aberdeen',
@@ -134,9 +134,9 @@ VALUES
   'available'
 ),
 
--- 11. Devarran-II Ltd — Basement Right
+-- 10. Devarran-II Ltd — Studio, Basement Right
 (
-  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd' LIMIT 1),
   '16 Merkland Road',
   'Basement Right',
   'Aberdeen',
@@ -147,9 +147,9 @@ VALUES
   'available'
 ),
 
--- 12. Devarran-II Ltd — Ground Floor Right
+-- 11. Devarran-II Ltd — 1 bed flat, Ground Floor Right
 (
-  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd'),
+  (SELECT id FROM legal_entities WHERE name = 'Devarran-II Ltd' LIMIT 1),
   '16 Merkland Road',
   'Ground Floor Right',
   'Aberdeen',
@@ -160,9 +160,9 @@ VALUES
   'available'
 ),
 
--- 12. N Bhalani
+-- 12. N Bhalani — 1 bed apartment
 (
-  (SELECT id FROM legal_entities WHERE name = 'N Bhalani'),
+  (SELECT id FROM legal_entities WHERE name = 'N Bhalani' LIMIT 1),
   '84C King Street',
   NULL,
   'Aberdeen',
