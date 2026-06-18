@@ -5,14 +5,17 @@ import { sanitiseFilename } from '@/lib/utils/sanitise'
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const TOKEN_EXPIRY_MS = 72 * 60 * 60 * 1000 // 72 hours
+const TOKEN_EXPIRY_MS = 72 * 60 * 60 * 1000
 
 export interface UploadState {
   error?: string
-  success?: boolean
+  // Names of files successfully uploaded in this submission
+  uploaded?: string[]
+  // Per-file validation errors: { filename: errorMessage }
+  fileErrors?: Record<string, string>
 }
 
-export async function uploadRightToRentDocument(
+export async function uploadRightToRentDocuments(
   token: string,
   _prev: UploadState,
   formData: FormData
@@ -26,67 +29,85 @@ export async function uploadRightToRentDocument(
     .eq('unique_link_token', token)
     .single()
 
-  if (tenantError || !tenant) {
-    return { error: 'This link is invalid.' }
-  }
-
-  if (tenant.status !== 'prospective') {
-    return { error: 'This link is no longer active.' }
-  }
+  if (tenantError || !tenant) return { error: 'This link is invalid.' }
+  if (tenant.status !== 'prospective') return { error: 'This link is no longer active.' }
 
   const tokenAge = Date.now() - new Date(tenant.created_at).getTime()
   if (tokenAge > TOKEN_EXPIRY_MS) {
     return { error: 'This link has expired. Please contact your landlord to request a new one.' }
   }
 
-  const file = formData.get('document') as File | null
-  if (!file || file.size === 0) {
-    return { error: 'Please select a file to upload.' }
+  const rawFiles = formData.getAll('documents') as File[]
+  const files = rawFiles.filter((f) => f instanceof File && f.size > 0)
+
+  if (files.length === 0) {
+    return { error: 'Please select at least one file to upload.' }
   }
 
-  // Server-side file validation
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return { error: 'File must be a JPEG, PNG, or PDF.' }
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    return { error: 'File must be under 10MB.' }
-  }
-
-  const safeName = sanitiseFilename(file.name)
-  const timestamp = Date.now()
-  // Path includes tenant_id so landlord can retrieve by tenant in Step 10
-  const storagePath = `${tenant.id}/${timestamp}_${safeName}`
-
-  const arrayBuffer = await file.arrayBuffer()
-
-  const { error: uploadError } = await supabase.storage
-    .from('right-to-rent-documents')
-    .upload(storagePath, arrayBuffer, {
-      contentType: file.type,
-      upsert: false,
-    })
-
-  if (uploadError) {
-    return { error: 'Upload failed. Please try again.' }
+  // Validate all files before uploading any — fail fast on bad input
+  const fileErrors: Record<string, string> = {}
+  for (const file of files) {
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      fileErrors[file.name] = 'Must be a JPEG, PNG, or PDF.'
+    } else if (file.size > MAX_FILE_SIZE) {
+      fileErrors[file.name] = 'Must be under 10MB.'
+    }
   }
 
-  // Create document record — tenancy_id null at this stage (pre-tenancy)
-  const { error: docError } = await supabase
-    .from('documents')
-    .insert({
-      type: 'right_to_rent',
-      file_url: storagePath,
-      tenancy_id: null,
-      property_id: null,
-      uploaded_by: null,
-      delivered_to_tenant: false,
-    })
-
-  if (docError) {
-    // Clean up the uploaded file if record creation fails
-    await supabase.storage.from('right-to-rent-documents').remove([storagePath])
-    return { error: 'Failed to record your document. Please try again.' }
+  if (Object.keys(fileErrors).length > 0) {
+    return { fileErrors }
   }
 
-  return { success: true }
+  // Upload each file individually — separate storage file and documents row per file
+  const uploaded: string[] = []
+  const uploadFileErrors: Record<string, string> = {}
+
+  for (const file of files) {
+    const safeName = sanitiseFilename(file.name)
+    // Unique timestamp per file to prevent collisions in the same batch
+    const timestamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const storagePath = `${tenant.id}/${timestamp}_${safeName}`
+
+    const arrayBuffer = await file.arrayBuffer()
+
+    const { error: uploadError } = await supabase.storage
+      .from('right-to-rent-documents')
+      .upload(storagePath, arrayBuffer, { contentType: file.type, upsert: false })
+
+    if (uploadError) {
+      uploadFileErrors[file.name] = 'Upload failed. Please try again.'
+      continue
+    }
+
+    const { error: docError } = await supabase
+      .from('documents')
+      .insert({
+        type: 'right_to_rent',
+        file_url: storagePath,
+        tenancy_id: null,
+        property_id: null,
+        uploaded_by: null,
+        delivered_to_tenant: false,
+      })
+
+    if (docError) {
+      // Roll back the storage upload if the DB insert fails
+      await supabase.storage.from('right-to-rent-documents').remove([storagePath])
+      uploadFileErrors[file.name] = 'Failed to record document. Please try again.'
+      continue
+    }
+
+    uploaded.push(file.name)
+  }
+
+  if (uploaded.length === 0) {
+    return { fileErrors: uploadFileErrors }
+  }
+
+  // Partial success: some uploaded, some failed
+  if (Object.keys(uploadFileErrors).length > 0) {
+    return { uploaded, fileErrors: uploadFileErrors }
+  }
+
+  return { uploaded }
 }

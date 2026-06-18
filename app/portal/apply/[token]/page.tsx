@@ -10,11 +10,8 @@ interface ApplyPageProps {
 export default async function ApplyPage({ params }: ApplyPageProps) {
   const { token } = await params
 
-  // Validate token format before hitting the DB
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (!uuidPattern.test(token)) {
-    return <InvalidPage />
-  }
+  if (!uuidPattern.test(token)) return <InvalidPage />
 
   const supabase = createServiceClient()
 
@@ -24,14 +21,17 @@ export default async function ApplyPage({ params }: ApplyPageProps) {
     .eq('unique_link_token', token)
     .single()
 
-  if (!tenant || tenant.status !== 'prospective') {
-    return <InvalidPage />
-  }
+  if (!tenant || tenant.status !== 'prospective') return <InvalidPage />
 
   const tokenAge = Date.now() - new Date(tenant.created_at).getTime()
-  if (tokenAge > TOKEN_EXPIRY_MS) {
-    return <ExpiredPage />
-  }
+  if (tokenAge > TOKEN_EXPIRY_MS) return <ExpiredPage />
+
+  // Count documents already submitted by this tenant so the form can show the running tally
+  const { count: existingCount } = await supabase
+    .from('documents')
+    .select('*', { count: 'exact', head: true })
+    .eq('type', 'right_to_rent')
+    .like('file_url', `${tenant.id}/%`)
 
   const expiresAt = new Date(new Date(tenant.created_at).getTime() + TOKEN_EXPIRY_MS)
   const expiryString = expiresAt.toLocaleString('en-GB', {
@@ -51,16 +51,17 @@ export default async function ApplyPage({ params }: ApplyPageProps) {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Hello, {tenant.first_name}</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Please upload your Right to Rent document below. This link expires on{' '}
-              <strong>{expiryString}</strong>.
+              Please upload your Right to Rent document{existingCount ? 's' : ''} below.
+              You can submit multiple files — upload them one batch at a time or all at once.
+              This link expires on <strong>{expiryString}</strong>.
             </p>
           </div>
 
-          <UploadForm token={token} />
+          <UploadForm token={token} initialCount={existingCount ?? 0} />
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Your document is stored securely and will only be accessed by your landlord.
+          Your documents are stored securely and will only be accessed by your landlord.
         </p>
       </div>
     </div>
