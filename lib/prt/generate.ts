@@ -461,6 +461,10 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   txt(c, 'If that person subsequently leaves the Let Property the Tenant must tell the Landlord.')
   gap(c, 4)
   txt(c, 'The Tenant will take reasonable care to ensure that anyone living with them does not do anything that would be a breach of this Agreement if they were the Tenant. If they do, the Tenant will be treated as being responsible for any such action and will be liable for the cost of any repairs, renewals or replacement of items where required.')
+  gap(c, 4)
+  txt(c, 'When allowing a person to occupy the Let Property with the Tenant as that person\'s only or principal home, the Tenant must ensure that the Let Property does not become an unlicensed "house in multiple occupation" (HMO) (see Section 2: glossary of terms for definition of "house in multiple occupation").', { font: bold })
+  gap(c, 4)
+  txt(c, 'The Tenant will be liable for reasonable costs and expenses, including if applicable, legal or court expenses, payable by the Landlord or his or her Agent as a result of the accommodation being, as a consequence of the Tenant\'s breach, deemed an unlicensed or unregistered "house in multiple occupation".', { font: bold })
 
   // ── 14. OVERCROWDING ─────────────────────────────────────────────────────
   sectionTitle(c, '14', 'OVERCROWDING')
@@ -535,9 +539,29 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   txt(c, 'Landlords must ensure an electrical safety inspection comprising of periodic inspection and testing of the electrical installation and \'In-service inspection and testing of electrical equipment\' (also known as PAT testing) is carried out by a suitably competent person before the property is let for the first time, and then at intervals of no more than five years. Electrical inspection reports must be supplied to the tenant.')
   gap(c, 8)
 
+  txt(c, 'Installations', { font: bold })
+  gap(c, 4)
+  txt(c, `The Landlord will keep in repair and in proper working order the installations in the Let Property for the supply of water, ${data.hasGas ? 'gas, ' : ''}electricity, sanitation, space heating and water heating (with the exception of those installed by the Tenant or which the Tenant is entitled to remove).`)
+  gap(c, 8)
+
   txt(c, 'Energy Performance Certificate (EPC)', { font: bold })
   gap(c, 4)
   txt(c, 'A valid EPC (not more than 10 years old) must be given to the Tenant at the start date of the tenancy, unless the Tenant is renting a room with shared access to a kitchen, bathroom and living area.')
+  gap(c, 8)
+
+  txt(c, 'Furnishings', { font: bold })
+  gap(c, 4)
+  txt(c, 'Landlords should ensure that all upholstered furniture provided complies with the Furniture and Furnishings (Fire Safety) Regulations 1988 as amended, as evidenced by the permanent labelling.')
+  gap(c, 8)
+
+  txt(c, 'Defective Fixtures and Fittings', { font: bold })
+  gap(c, 4)
+  txt(c, 'All fixtures and fittings provided by the Landlord in the Let Property should be in a reasonable state of repair and in proper working order. The Landlord will repair or replace any of the fixtures, fittings or furnishings supplied which become defective and will do so within a reasonable period of time. Nothing contained in this Agreement makes the Landlord responsible for repairing damage caused wilfully or negligently by the Tenant, anyone living with the Tenant or an invited visitor to the Let Property.')
+  gap(c, 8)
+
+  txt(c, 'Food Storage and Preparation', { font: bold })
+  gap(c, 4)
+  txt(c, 'Landlords must ensure that the tenant can safely access food storage and food preparation space. This includes appropriate space to store food, as well as space and an appropriate power source for the installation of a fridge and freezer or a fridge/freezer. The food preparation space must be appropriate and set out in a way that allows it to be used safely.')
   gap(c, 8)
 
   txt(c, 'Repair Timetable', { font: bold })
@@ -670,12 +694,16 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   txt(c, 'The Tenant has the right to change supplier if he or she pays the energy supplier directly for gas or electricity. The Tenant agrees to inform the Landlord if they choose to change the utilities supplier, and to provide the Landlord with details of the new supplier.')
   gap(c, 4)
   txt(c, 'The Tenant must take meter readings for all utilities on the day of entry and on the day of vacation and provide written copies to the Landlord or Agent within 48 hours of each reading being taken.')
+  gap(c, 4)
+  txt(c, 'If the Tenant allows the meter to be changed from or to a pre-payment meter during the tenancy, the Tenant is responsible for the reasonable cost of changing the meter back over at the end of the tenancy, unless the Landlord wishes it to remain.')
 
   // ── 28. ALTERATIONS ──────────────────────────────────────────────────────
   sectionTitle(c, '28', 'ALTERATIONS')
   txt(c, 'The Tenant agrees not to make any alteration to the Let Property, its fixtures or fittings, nor to carry out any internal or external decoration without the prior written consent of the Landlord.')
   gap(c, 4)
   txt(c, 'Any request for adaptations, auxiliary aids or services under section 37 of the Equality Act 2010 or section 52 of the Housing (Scotland) Act 2006 must be made in writing to the Landlord and any other owners of the common parts, where appropriate. Consent for alterations requested under this legislation should not be unreasonably withheld.')
+  gap(c, 4)
+  txt(c, 'If no consent is given for the adaptations you may appeal to the Tribunal in relation to section 52 (or sheriff court in relation to section 37) within 6 months of being notified of the decision. Before doing this, you may find it helpful to discuss your circumstance with your local Citizens Advice Bureau, Shelter Scotland or the local authority for the area where the Let Property is situated.')
   gap(c, 4)
   txt(c, 'The Tenant must not carry out any building, structural or DIY works of any kind without the prior written consent of the Landlord. The Tenant must not repaint, redecorate or change the colour scheme of any room or surface without the prior written consent of the Landlord. Any consented works must be carried out to a professional standard. The Landlord may require the property to be returned to its original condition at the end of the tenancy.')
 
