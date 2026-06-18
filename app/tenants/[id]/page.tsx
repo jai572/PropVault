@@ -18,8 +18,6 @@ function statusVariant(status: Tenant['status']): BadgeVariant {
   }
 }
 
-const SIGNED_URL_EXPIRY_SECONDS = 300 // 5-minute signed URLs
-
 export default async function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
@@ -46,28 +44,13 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     .like('file_url', `${tenant.id}/%`)
     .order('created_at', { ascending: true })
 
-  const docs = allDocs ?? []
-
-  // Generate short-lived signed URLs for each document (private bucket)
-  const signedDocs = await Promise.all(
-    docs.map(async (doc) => {
-      const { data } = await serviceClient.storage
-        .from('right-to-rent-documents')
-        .createSignedUrl(doc.file_url, SIGNED_URL_EXPIRY_SECONDS)
-
-      const filename = doc.file_url.split('/').pop() ?? doc.file_url
-      // Strip the timestamp prefix from display name: {timestamp}_{random}_{original}
-      const displayName = filename.replace(/^\d+_[a-z0-9]+_/, '')
-
-      return {
-        id: doc.id,
-        file_url: doc.file_url,
-        signedUrl: data?.signedUrl ?? null,
-        displayName,
-        uploadedAt: doc.created_at,
-      }
-    })
-  )
+  const docs = (allDocs ?? []).map((doc) => {
+    const filename = doc.file_url.split('/').pop() ?? doc.file_url
+    const displayName = filename.replace(/^\d+_[a-z0-9]+_/i, '')
+    // View link hits our API route which generates a fresh signed URL server-side
+    const viewHref = `/api/documents/view?path=${encodeURIComponent(doc.file_url)}`
+    return { id: doc.id, file_url: doc.file_url, displayName, viewHref, uploadedAt: doc.created_at }
+  })
 
   const isVerified = tenant.right_to_rent_verified
   const canVerify  = !isVerified && docs.length > 0 && tenant.status !== 'purged'
@@ -145,7 +128,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           Uploaded documents
           {docs.length > 0 && (
             <span className="ml-2 text-xs font-normal text-gray-400">
-              {docs.length} file{docs.length !== 1 ? 's' : ''} · links expire in 5 minutes
+              {docs.length} file{docs.length !== 1 ? 's' : ''}
             </span>
           )}
         </h2>
@@ -154,7 +137,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           <p className="text-sm text-gray-400">No documents uploaded yet.</p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {signedDocs.map((doc) => (
+            {docs.map((doc) => (
               <li key={doc.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-gray-900 truncate">{doc.displayName}</p>
@@ -164,18 +147,14 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
                     })}
                   </p>
                 </div>
-                {doc.signedUrl ? (
-                  <a
-                    href={doc.signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    View
-                  </a>
-                ) : (
-                  <span className="flex-shrink-0 text-xs text-gray-400">Unavailable</span>
-                )}
+                <a
+                  href={doc.viewHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  View
+                </a>
               </li>
             ))}
           </ul>
