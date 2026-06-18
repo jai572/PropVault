@@ -92,7 +92,9 @@ export default async function TenantsPage() {
                   return (
                     <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {tenant.first_name} {tenant.last_name}
+                        <Link href={`/tenants/${tenant.id}`} className="hover:underline">
+                          {tenant.first_name} {tenant.last_name}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{tenant.email}</td>
                       <td className="px-6 py-4">
@@ -135,7 +137,9 @@ export default async function TenantsPage() {
                 <div key={tenant.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{tenant.first_name} {tenant.last_name}</p>
+                      <Link href={`/tenants/${tenant.id}`} className="text-sm font-medium text-gray-900 hover:underline">
+                        {tenant.first_name} {tenant.last_name}
+                      </Link>
                       <p className="text-xs text-gray-400 mt-0.5">{tenant.email}</p>
                     </div>
                     <Badge label={tenant.status} variant={statusVariant(tenant.status)} />
