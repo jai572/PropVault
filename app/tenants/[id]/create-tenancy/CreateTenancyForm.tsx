@@ -8,6 +8,7 @@ import type { Property } from '@/types'
 interface Props {
   tenantId: string
   tenantName: string
+  tenantEmail: string
   internalUserId: string
   properties: Pick<Property, 'id' | 'address_line_1' | 'address_line_2' | 'city' | 'postcode' | 'is_hmo' | 'hmo_licence_number' | 'hmo_licence_expiry' | 'has_gas' | 'legal_entity_id'>[]
 }
@@ -20,7 +21,13 @@ const DEPOSIT_SCHEMES = [
   'mydeposits Scotland',
 ]
 
-export default function CreateTenancyForm({ tenantId, tenantName, internalUserId, properties }: Props) {
+const FURNISHED_OPTIONS = [
+  'Furnished — see Inventory and Record of Condition',
+  'Part-Furnished — see Inventory and Record of Condition',
+  'Unfurnished',
+]
+
+export default function CreateTenancyForm({ tenantId, tenantName, tenantEmail, internalUserId, properties }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
 
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
@@ -85,7 +92,72 @@ export default function CreateTenancyForm({ tenantId, tenantName, internalUserId
         )}
 
         <form action={action} className="space-y-5">
-          {/* Property */}
+
+          {/* ── Tenant details for PRT (generate mode only) ── */}
+          {mode === 'generate' && (
+            <fieldset className="space-y-4">
+              <legend className="text-sm font-semibold text-gray-800">Tenant details for PRT</legend>
+              <p className="text-xs text-gray-500 -mt-2">
+                {tenantName} ({tenantEmail}) — additional details needed for the agreement.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="tenant_dob" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Date of birth <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="tenant_dob"
+                    name="tenant_dob"
+                    type="date"
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="tenant_nationality" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nationality <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="tenant_nationality"
+                    name="tenant_nationality"
+                    type="text"
+                    placeholder="e.g. British"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="tenant_passport" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Passport / ID document number <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="tenant_passport"
+                  name="tenant_passport"
+                  type="text"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="tenant_current_address" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Current address (pre-tenancy) <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="tenant_current_address"
+                  name="tenant_current_address"
+                  type="text"
+                  placeholder="e.g. 12 Example Street, Aberdeen, AB12 3CD"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+            </fieldset>
+          )}
+
+          {/* ── Property ── */}
           <div>
             <label htmlFor="property_id" className="block text-sm font-medium text-gray-700 mb-1.5">
               Property <span className="text-red-500">*</span>
@@ -104,6 +176,85 @@ export default function CreateTenancyForm({ tenantId, tenantName, internalUserId
               })}
             </select>
           </div>
+
+          {/* ── Property description for PRT (generate mode only) ── */}
+          {mode === 'generate' && (
+            <fieldset className="space-y-4">
+              <legend className="text-sm font-semibold text-gray-800">Property description for PRT</legend>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="property_type" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Property type <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="property_type"
+                    name="property_type"
+                    type="text"
+                    placeholder="e.g. Flat (Third Floor Left)"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="furnished_status" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Furnished status <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <select
+                    id="furnished_status"
+                    name="furnished_status"
+                    defaultValue=""
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                  >
+                    <option value="">Not specified</option>
+                    {FURNISHED_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="shared_areas" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Shared areas <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="shared_areas"
+                  name="shared_areas"
+                  type="text"
+                  placeholder="e.g. Common stair and entrance"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="excluded_areas" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Excluded areas <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="excluded_areas"
+                  name="excluded_areas"
+                  type="text"
+                  placeholder="e.g. None"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="parking_description" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Parking <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="parking_description"
+                  name="parking_description"
+                  type="text"
+                  placeholder="e.g. No parking is included with this tenancy"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+            </fieldset>
+          )}
 
           {/* Room reference */}
           <div>

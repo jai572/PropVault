@@ -154,14 +154,14 @@ export async function createTenancyAndGeneratePRT(
 
   const { data: property } = await supabase
     .from('properties')
-    .select('id, address_line_1, address_line_2, city, postcode, is_hmo, hmo_licence_number, hmo_licence_expiry, legal_entity_id')
+    .select('id, address_line_1, address_line_2, city, postcode, is_hmo, hmo_licence_number, hmo_licence_expiry, has_gas, legal_entity_id')
     .eq('id', fields.propertyId)
     .single()
   if (!property) return { error: 'Property not found or not accessible.' }
 
   const { data: legalEntity } = await supabase
     .from('legal_entities')
-    .select('name, landlord_registration_number, council_area')
+    .select('name, landlord_registration_number, address, email, telephone')
     .eq('id', property.legal_entity_id)
     .single()
   if (!legalEntity) return { error: 'Could not retrieve landlord details for this property.' }
@@ -176,25 +176,55 @@ export async function createTenancyAndGeneratePRT(
 
   const propertyAddress = [property.address_line_1, property.address_line_2, property.city, property.postcode].filter(Boolean).join(', ')
 
+  // Read PRT-specific form fields
+  const tenantDob            = sanitiseText(formData.get('tenant_dob')             as string ?? '') || null
+  const tenantPassport       = sanitiseText(formData.get('tenant_passport')        as string ?? '') || null
+  const tenantNationality    = sanitiseText(formData.get('tenant_nationality')     as string ?? '') || null
+  const tenantCurrentAddress = sanitiseText(formData.get('tenant_current_address') as string ?? '') || null
+  const propertyType         = sanitiseText(formData.get('property_type')          as string ?? '') || null
+  const furnishedStatus      = sanitiseText(formData.get('furnished_status')       as string ?? '') || null
+  const sharedAreas          = sanitiseText(formData.get('shared_areas')           as string ?? '') || null
+  const excludedAreas        = sanitiseText(formData.get('excluded_areas')         as string ?? '') || null
+  const parkingDescription   = sanitiseText(formData.get('parking_description')    as string ?? '') || null
+
+  // Format DOB for display if provided (ISO → "DD Month YYYY")
+  let dobDisplay: string | null = null
+  if (tenantDob && /^\d{4}-\d{2}-\d{2}$/.test(tenantDob)) {
+    const d = new Date(tenantDob + 'T00:00:00')
+    dobDisplay = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
   const prtBytes = await generatePRT({
     tenancyReference: result.tenancyReference,
+    tenants: [{
+      fullName: `${tenant.first_name} ${tenant.last_name}`,
+      dateOfBirth: dobDisplay,
+      passportNumber: tenantPassport,
+      nationality: tenantNationality,
+      currentAddress: tenantCurrentAddress,
+      email: tenant.email,
+    }],
     landlordName: legalEntity.name,
-    landlordRegistrationNumber: legalEntity.landlord_registration_number,
-    landlordCouncilArea: legalEntity.council_area,
-    landlordAddress: legalEntity.council_area ?? 'Scotland',
+    landlordRegistrationNumber: legalEntity.landlord_registration_number ?? null,
+    landlordAddress: legalEntity.address ?? null,
+    landlordEmail: legalEntity.email ?? null,
+    landlordTelephone: legalEntity.telephone ?? null,
     propertyAddress,
+    propertyType,
+    furnishedStatus,
     isHmo: property.is_hmo,
-    hmoLicenceNumber: property.hmo_licence_number,
-    hmoLicenceExpiry: property.hmo_licence_expiry,
-    tenantName: `${tenant.first_name} ${tenant.last_name}`,
-    tenantEmail: tenant.email,
+    hmoLicenceNumber: property.hmo_licence_number ?? null,
+    sharedAreas,
+    excludedAreas,
+    parkingDescription,
+    hasGas: property.has_gas,
     startDate: fields.startDate,
     rentAmount: fields.rentAmount,
     rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount,
     depositScheme: fields.depositScheme,
     depositReference: fields.depositReference,
-    roomReference: fields.roomReference,
+    includeSection37: legalEntity.name === 'TJ Property Consultants Ltd',
   })
 
   const serviceClient = createServiceClient()

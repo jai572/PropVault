@@ -61,6 +61,7 @@ export default async function CreateTenancyPage({ params }: { params: Promise<{ 
       <CreateTenancyForm
         tenantId={tenant.id}
         tenantName={`${tenant.first_name} ${tenant.last_name}`}
+        tenantEmail={tenant.email}
         internalUserId={internalUser.id}
         properties={properties}
       />

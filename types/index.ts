@@ -4,6 +4,9 @@ export interface LegalEntity {
   type: 'individual' | 'company'
   landlord_registration_number: string | null
   council_area: string | null
+  address: string | null
+  email: string | null
+  telephone: string | null
   created_at: string
 }
 
