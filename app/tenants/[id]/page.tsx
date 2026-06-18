@@ -161,6 +161,22 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         )}
       </div>
 
+      {/* Create PRT — shown only when Right to Rent is verified */}
+      {isVerified && tenant.status === 'prospective' && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Right to Rent verified</p>
+            <p className="text-xs text-gray-500 mt-0.5">Ready to create a Private Residential Tenancy.</p>
+          </div>
+          <Link
+            href={`/tenants/${tenant.id}/create-tenancy`}
+            className="flex-shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 transition-colors"
+          >
+            Create PRT
+          </Link>
+        </div>
+      )}
+
       {/* Verification form — shown only if not yet verified and docs exist */}
       {canVerify && <VerifyRightToRent tenantId={tenant.id} />}
 
