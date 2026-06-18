@@ -29,6 +29,12 @@ export default async function AppNav() {
               >
                 Properties
               </Link>
+              <Link
+                href="/tenants"
+                className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              >
+                Tenants
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
