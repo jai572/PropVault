@@ -1,6 +1,6 @@
 import AppNav from '@/components/ui/AppNav'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function PropertiesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppNav />

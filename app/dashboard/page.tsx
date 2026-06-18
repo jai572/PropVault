@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
+import Link from 'next/link'
 import type { Property, LegalEntity } from '@/types'
 
 type PropertyWithEntity = Property & {
@@ -87,10 +88,12 @@ export default async function DashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {entityProperties.map((property) => (
-                    <tr key={property.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={property.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{formatAddress(property)}</div>
-                        <div className="text-xs text-gray-400">{property.city} · {property.postcode}</div>
+                        <Link href={`/properties/${property.id}`} className="block">
+                          <div className="text-sm font-medium text-gray-900 hover:text-gray-600">{formatAddress(property)}</div>
+                          <div className="text-xs text-gray-400">{property.city} · {property.postcode}</div>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 capitalize">{property.property_type ?? '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{property.bedrooms ?? '—'}</td>
@@ -113,7 +116,11 @@ export default async function DashboardPage() {
             {/* Mobile card list */}
             <div className="sm:hidden space-y-2">
               {entityProperties.map((property) => (
-                <div key={property.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <Link
+                  key={property.id}
+                  href={`/properties/${property.id}`}
+                  className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{formatAddress(property)}</p>
@@ -130,7 +137,7 @@ export default async function DashboardPage() {
                     )}
                     {property.is_hmo && <Badge label="HMO" variant="purple" />}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
