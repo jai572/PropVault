@@ -83,12 +83,13 @@ export interface Tenant {
   last_name: string
   email: string
   phone: string | null
-  status: 'prospective' | 'active' | 'closed' | 'purged'
+  status: 'prospective' | 'active' | 'closed' | 'purged' | 'withdrawn'
   right_to_rent_verified: boolean
   right_to_rent_checked_date: string | null
   right_to_rent_document_type: string | null
   right_to_rent_expiry: string | null
   unique_link_token: string | null
+  created_by_user_id: string | null
   created_at: string
 }
 
