@@ -1,25 +1,20 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib'
 
 export interface PRTData {
-  // Tenancy reference (auto-generated, passed in after DB insert)
   tenancyReference: string
-  // Landlord / legal entity
   landlordName: string
   landlordRegistrationNumber: string | null
   landlordCouncilArea: string | null
   landlordAddress: string
-  // Property
   propertyAddress: string
   isHmo: boolean
   hmoLicenceNumber: string | null
   hmoLicenceExpiry: string | null
-  // Tenant
   tenantName: string
   tenantEmail: string
-  // Tenancy terms
-  startDate: string         // ISO date
-  rentAmount: number        // £ per month
-  rentDueDay: number        // 1–28
+  startDate: string
+  rentAmount: number
+  rentDueDay: number
   depositAmount: number | null
   depositScheme: string | null
   depositReference: string | null
@@ -28,302 +23,306 @@ export interface PRTData {
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 
-const MARGIN = 56
-const PAGE_WIDTH  = 595.28  // A4
-const PAGE_HEIGHT = 841.89  // A4
+const MARGIN      = 60
+const PAGE_WIDTH  = 595.28
+const PAGE_HEIGHT = 841.89
 const BODY_WIDTH  = PAGE_WIDTH - MARGIN * 2
 
-const FONT_SIZE_TITLE   = 16
-const FONT_SIZE_HEADING = 12
-const FONT_SIZE_BODY    = 10
-const FONT_SIZE_SMALL   =  8
+const FS_TITLE   = 15
+const FS_H1      = 12
+const FS_BODY    = 9.5
+const FS_SMALL   = 8
 
-const BLACK  = rgb(0, 0, 0)
-const GRAY   = rgb(0.4, 0.4, 0.4)
-const LGRAY  = rgb(0.85, 0.85, 0.85)
+const BLACK = rgb(0, 0, 0)
+const GRAY  = rgb(0.45, 0.45, 0.45)
+const LGRAY = rgb(0.82, 0.82, 0.82)
 
-// ─── Cursor / page helpers ──────────────────────────────────────────────────
+// ─── Cursor helpers ──────────────────────────────────────────────────────────
 
-interface Ctx {
-  doc:     PDFDocument
-  pages:   PDFPage[]
-  regular: PDFFont
-  bold:    PDFFont
-  y:       number
-}
+interface Ctx { doc: PDFDocument; pages: PDFPage[]; regular: PDFFont; bold: PDFFont; y: number }
 
-function currentPage(ctx: Ctx) { return ctx.pages[ctx.pages.length - 1] }
+const page  = (ctx: Ctx) => ctx.pages[ctx.pages.length - 1]
 
-function addPage(ctx: Ctx) {
-  const page = ctx.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
-  ctx.pages.push(page)
+function newPage(ctx: Ctx) {
+  ctx.pages.push(ctx.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]))
   ctx.y = PAGE_HEIGHT - MARGIN
 }
 
-function ensureSpace(ctx: Ctx, needed: number) {
-  if (ctx.y - needed < MARGIN) addPage(ctx)
-}
+function need(ctx: Ctx, h: number) { if (ctx.y - h < MARGIN + 20) newPage(ctx) }
 
-function drawText(
+function text(
   ctx: Ctx,
-  text: string,
-  opts: { font?: PDFFont; size?: number; color?: ReturnType<typeof rgb>; indent?: number; lineHeight?: number } = {}
+  str: string,
+  opts: { font?: PDFFont; size?: number; color?: ReturnType<typeof rgb>; x?: number; maxW?: number; lh?: number } = {}
 ) {
-  const font       = opts.font ?? ctx.regular
-  const size       = opts.size ?? FONT_SIZE_BODY
-  const color      = opts.color ?? BLACK
-  const indent     = opts.indent ?? 0
-  const lineHeight = opts.lineHeight ?? size * 1.45
+  const font  = opts.font  ?? ctx.regular
+  const size  = opts.size  ?? FS_BODY
+  const color = opts.color ?? BLACK
+  const x     = opts.x    ?? MARGIN
+  const maxW  = opts.maxW ?? BODY_WIDTH - (x - MARGIN)
+  const lh    = opts.lh   ?? size * 1.5
 
-  const maxWidth = BODY_WIDTH - indent
-  const words = text.split(' ')
+  const words = str.split(' ')
   let line = ''
-
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word
-    const testWidth = font.widthOfTextAtSize(test, size)
-    if (testWidth > maxWidth && line) {
-      ensureSpace(ctx, lineHeight)
-      currentPage(ctx).drawText(line, { x: MARGIN + indent, y: ctx.y, size, font, color })
-      ctx.y -= lineHeight
-      line = word
-    } else {
-      line = test
-    }
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w
+    if (font.widthOfTextAtSize(test, size) > maxW && line) {
+      need(ctx, lh)
+      page(ctx).drawText(line, { x, y: ctx.y, size, font, color })
+      ctx.y -= lh
+      line = w
+    } else { line = test }
   }
-
   if (line) {
-    ensureSpace(ctx, lineHeight)
-    currentPage(ctx).drawText(line, { x: MARGIN + indent, y: ctx.y, size, font, color })
-    ctx.y -= lineHeight
+    need(ctx, lh)
+    page(ctx).drawText(line, { x, y: ctx.y, size, font, color })
+    ctx.y -= lh
   }
 }
 
-function gap(ctx: Ctx, amount = 8) { ctx.y -= amount }
+const gap  = (ctx: Ctx, n = 6) => { ctx.y -= n }
 
-function rule(ctx: Ctx) {
-  ensureSpace(ctx, 12)
-  currentPage(ctx).drawLine({
-    start: { x: MARGIN, y: ctx.y },
-    end:   { x: MARGIN + BODY_WIDTH, y: ctx.y },
-    thickness: 0.5,
-    color: LGRAY,
-  })
-  ctx.y -= 10
+function rule(ctx: Ctx, weight = 0.4) {
+  need(ctx, 8)
+  page(ctx).drawLine({ start: { x: MARGIN, y: ctx.y }, end: { x: MARGIN + BODY_WIDTH, y: ctx.y }, thickness: weight, color: LGRAY })
+  ctx.y -= 8
 }
 
-function sectionHeading(ctx: Ctx, text: string) {
+function h1(ctx: Ctx, str: string) {
   gap(ctx, 14)
-  ensureSpace(ctx, 24)
-  drawText(ctx, text, { font: ctx.bold, size: FONT_SIZE_HEADING })
-  gap(ctx, 4)
-  rule(ctx)
+  need(ctx, 22)
+  text(ctx, str, { font: ctx.bold, size: FS_H1 })
+  gap(ctx, 2)
+  rule(ctx, 0.6)
 }
 
-function termHeading(ctx: Ctx, label: string) {
+function term(ctx: Ctx, label: string) {
   gap(ctx, 10)
-  ensureSpace(ctx, 16)
-  drawText(ctx, label, { font: ctx.bold, size: FONT_SIZE_BODY })
+  need(ctx, 14)
+  text(ctx, label, { font: ctx.bold, size: FS_BODY })
   gap(ctx, 2)
 }
 
-function kv(ctx: Ctx, key: string, value: string) {
-  ensureSpace(ctx, 14)
-  const page = currentPage(ctx)
-  page.drawText(key, { x: MARGIN, y: ctx.y, size: FONT_SIZE_BODY, font: ctx.bold, color: GRAY })
-  page.drawText(value, { x: MARGIN + 180, y: ctx.y, size: FONT_SIZE_BODY, font: ctx.regular, color: BLACK })
-  ctx.y -= FONT_SIZE_BODY * 1.6
+function kv(ctx: Ctx, key: string, val: string) {
+  const labelW = 175
+  need(ctx, 14)
+  page(ctx).drawText(key, { x: MARGIN,           y: ctx.y, size: FS_BODY, font: ctx.bold,    color: GRAY  })
+  text(ctx, val, { x: MARGIN + labelW, maxW: BODY_WIDTH - labelW, size: FS_BODY, lh: FS_BODY * 1.45 })
+  // text() already moved y; if it drew multiple lines the first line sits at old y
 }
+
+function clause(ctx: Ctx, num: string, body: string) {
+  gap(ctx, 5)
+  need(ctx, 14)
+  const numW = ctx.bold.widthOfTextAtSize(num + ' ', FS_BODY)
+  page(ctx).drawText(num, { x: MARGIN, y: ctx.y, size: FS_BODY, font: ctx.bold, color: BLACK })
+  text(ctx, body, { x: MARGIN + numW + 4, maxW: BODY_WIDTH - numW - 4 })
+}
+
+// ─── Formatting helpers ───────────────────────────────────────────────────────
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
-
-function fmtMoney(amount: number) {
-  return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtMoney(n: number) {
+  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
 function ordinal(n: number) {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
+  const s = ['th','st','nd','rd']; const v = n % 100
+  return n + (s[(v-20)%10] ?? s[v] ?? s[0])
 }
 
-// ─── Main export ────────────────────────────────────────────────────────────
+// ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   const doc     = await PDFDocument.create()
+  doc.setTitle(`Private Residential Tenancy — ${data.tenancyReference}`)
+  doc.setSubject('Scottish Government Model Private Residential Tenancy Agreement (April 2024)')
+
   const regular = await doc.embedFont(StandardFonts.Helvetica)
   const bold    = await doc.embedFont(StandardFonts.HelveticaBold)
-
   const ctx: Ctx = { doc, pages: [], regular, bold, y: 0 }
-  addPage(ctx)
+  newPage(ctx)
+  ctx.y = PAGE_HEIGHT - MARGIN - 8
 
-  // ── Cover / title ────────────────────────────────────────────────────────
-  ctx.y = PAGE_HEIGHT - MARGIN - 10
-  drawText(ctx, 'PRIVATE RESIDENTIAL TENANCY AGREEMENT', { font: bold, size: FONT_SIZE_TITLE })
-  drawText(ctx, 'Private Housing (Tenancies) (Scotland) Act 2016', { size: FONT_SIZE_SMALL, color: GRAY })
+  // ── COVER ─────────────────────────────────────────────────────────────────
+  text(ctx, 'PRIVATE RESIDENTIAL TENANCY AGREEMENT', { font: bold, size: FS_TITLE })
+  gap(ctx, 2)
+  text(ctx, 'Scottish Government Model Agreement (April 2024 edition)', { size: FS_SMALL, color: GRAY })
+  text(ctx, 'Private Housing (Tenancies) (Scotland) Act 2016', { size: FS_SMALL, color: GRAY })
   gap(ctx, 4)
-  drawText(ctx, `Tenancy Reference: ${data.tenancyReference}`, { font: bold, size: FONT_SIZE_BODY })
-  gap(ctx, 4)
-  rule(ctx)
-  drawText(ctx, 'This agreement is a Private Residential Tenancy as defined by the Private Housing (Tenancies) (Scotland) Act 2016 and incorporates the statutory terms set out in the Mandatory Clauses of the Private Residential Tenancy (Statutory Terms) (Scotland) Regulations 2017.', { size: FONT_SIZE_SMALL, color: GRAY })
+  text(ctx, `Tenancy Reference: ${data.tenancyReference}`, { font: bold })
+  gap(ctx, 6)
+  rule(ctx, 1)
+  gap(ctx, 2)
+  text(ctx, 'This agreement sets out the terms of a private residential tenancy as defined by section 1 of the Private Housing (Tenancies) (Scotland) Act 2016. The statutory terms in Part 3 are mandatory and cannot be varied or excluded.', { size: FS_SMALL, color: GRAY })
 
-  // ── PART 1 — TENANCY DETAILS ────────────────────────────────────────────
-  sectionHeading(ctx, 'PART 1 — TENANCY DETAILS')
+  // ── PART 1 — THE PARTIES AND PROPERTY ─────────────────────────────────────
+  h1(ctx, 'PART 1 — THE PARTIES AND PROPERTY')
 
-  termHeading(ctx, '1. The Parties')
-  kv(ctx, 'Landlord', data.landlordName)
+  term(ctx, '1. Landlord')
+  kv(ctx, 'Name / Entity', data.landlordName)
   if (data.landlordRegistrationNumber) kv(ctx, 'Landlord Reg. No.', data.landlordRegistrationNumber)
   if (data.landlordCouncilArea)        kv(ctx, 'Council Area',      data.landlordCouncilArea)
-  kv(ctx, 'Landlord Address', data.landlordAddress)
-  kv(ctx, 'Tenant', data.tenantName)
-  kv(ctx, 'Tenant Email', data.tenantEmail)
+  kv(ctx, 'Address', data.landlordAddress)
 
-  termHeading(ctx, '2. The Property')
+  term(ctx, '2. Tenant(s)')
+  kv(ctx, 'Full name', data.tenantName)
+  kv(ctx, 'Email', data.tenantEmail)
+
+  term(ctx, '3. The Let Property')
   kv(ctx, 'Address', data.propertyAddress)
-  if (data.roomReference)    kv(ctx, 'Room / Unit',    data.roomReference)
-  if (data.isHmo)            kv(ctx, 'HMO Property',   'Yes')
-  if (data.hmoLicenceNumber) kv(ctx, 'HMO Licence No.', data.hmoLicenceNumber)
+  if (data.roomReference)    kv(ctx, 'Room / Unit',        data.roomReference)
+  if (data.isHmo)            kv(ctx, 'HMO',                'Yes — House in Multiple Occupation')
+  if (data.hmoLicenceNumber) kv(ctx, 'HMO Licence No.',    data.hmoLicenceNumber)
   if (data.hmoLicenceExpiry) kv(ctx, 'HMO Licence Expiry', fmtDate(data.hmoLicenceExpiry))
 
-  termHeading(ctx, '3. Term')
-  kv(ctx, 'Start Date', fmtDate(data.startDate))
-  kv(ctx, 'End Date', 'Open-ended — no fixed end date (Private Residential Tenancy)')
+  term(ctx, '4. Term')
+  kv(ctx, 'Start date', fmtDate(data.startDate))
+  kv(ctx, 'End date', 'None — open-ended Private Residential Tenancy (no fixed term)')
 
-  termHeading(ctx, '4. Rent')
-  kv(ctx, 'Monthly Rent', fmtMoney(data.rentAmount))
-  kv(ctx, 'Payment Due', `${ordinal(data.rentDueDay)} of each calendar month`)
+  term(ctx, '5. Rent')
+  kv(ctx, 'Monthly rent', fmtMoney(data.rentAmount))
+  kv(ctx, 'Due', `On or before the ${ordinal(data.rentDueDay)} day of each calendar month`)
 
-  termHeading(ctx, '5. Deposit')
+  term(ctx, '6. Deposit')
   if (data.depositAmount) {
-    kv(ctx, 'Deposit Amount', fmtMoney(data.depositAmount))
-    kv(ctx, 'Protection Scheme', data.depositScheme ?? 'To be confirmed')
+    kv(ctx, 'Amount', fmtMoney(data.depositAmount))
+    kv(ctx, 'Scheme', data.depositScheme ?? 'To be registered')
     if (data.depositReference) kv(ctx, 'Scheme Reference', data.depositReference)
     gap(ctx, 4)
-    drawText(ctx, 'The landlord must register the deposit with a Scottish Government-approved tenancy deposit scheme within 30 working days of the start of the tenancy.', { size: FONT_SIZE_SMALL, color: GRAY, indent: 0 })
+    text(ctx, 'The landlord must register the deposit with an approved tenancy deposit scheme within 30 working days of the tenancy start date (Housing (Scotland) Act 2006, s.120).', { size: FS_SMALL, color: GRAY })
   } else {
     kv(ctx, 'Deposit', 'No deposit required')
   }
 
-  // ── PART 2 — MANDATORY STATUTORY TERMS ─────────────────────────────────
-  sectionHeading(ctx, 'PART 2 — MANDATORY STATUTORY TERMS')
+  // ── PART 2 — ADDITIONAL TERMS ─────────────────────────────────────────────
+  h1(ctx, 'PART 2 — ADDITIONAL TERMS')
   gap(ctx, 2)
-  drawText(ctx, 'The following terms are the statutory terms prescribed by the Mandatory Clauses of the Private Residential Tenancy (Statutory Terms) (Scotland) Regulations 2017 (SSI 2017/407). They apply to every Private Residential Tenancy and cannot be varied or excluded.', { size: FONT_SIZE_SMALL, color: GRAY })
+  text(ctx, 'The following terms are agreed between the landlord and tenant in addition to the statutory terms in Part 3. Additional terms must not contradict or attempt to exclude any statutory term.', { size: FS_SMALL, color: GRAY })
+  gap(ctx, 12)
+  // Blank space for additional terms to be written in by parties
+  for (let i = 0; i < 6; i++) {
+    need(ctx, 18)
+    page(ctx).drawLine({ start: { x: MARGIN, y: ctx.y }, end: { x: MARGIN + BODY_WIDTH, y: ctx.y }, thickness: 0.3, color: LGRAY })
+    ctx.y -= 18
+  }
 
-  // Term 1 — Rent
-  termHeading(ctx, 'Term 1 — Rent')
-  drawText(ctx, `1(1) The tenant must pay to the landlord a rent of ${fmtMoney(data.rentAmount)} per month.`)
-  gap(ctx, 4)
-  drawText(ctx, `1(2) The rent is payable on the ${ordinal(data.rentDueDay)} day of each calendar month.`)
-  gap(ctx, 4)
-  drawText(ctx, '1(3) The landlord must provide a receipt for any rent paid in cash if the tenant requests one.')
+  // ── PART 3 — STATUTORY TERMS ───────────────────────────────────────────────
+  h1(ctx, 'PART 3 — STATUTORY TERMS')
+  gap(ctx, 2)
+  text(ctx, 'These are the mandatory terms prescribed by the Mandatory Clauses of the Private Residential Tenancy (Statutory Terms) (Scotland) Regulations 2017 (SSI 2017/407) as applicable to this tenancy. They apply automatically to every Private Residential Tenancy and cannot be varied or excluded by agreement.', { size: FS_SMALL, color: GRAY })
 
-  // Term 2 — Rent increases
-  termHeading(ctx, 'Term 2 — Rent Increases')
-  drawText(ctx, '2(1) The landlord may increase the rent by giving the tenant at least 3 months\' written notice of the increase.')
-  gap(ctx, 4)
-  drawText(ctx, '2(2) The landlord may not increase the rent more than once in any 12-month period.')
-  gap(ctx, 4)
-  drawText(ctx, '2(3) The tenant may refer a rent increase to a rent officer for adjudication under section 24 of the Private Housing (Tenancies) (Scotland) Act 2016.')
+  // ── Statutory Term 1 — Rent ──────────────────────────────────────────────
+  term(ctx, 'Statutory Term 1 — Rent')
+  clause(ctx, '1.', `The tenant must pay to the landlord the monthly rent of ${fmtMoney(data.rentAmount)}.`)
+  clause(ctx, '2.', `The rent is payable monthly in advance on the ${ordinal(data.rentDueDay)} day of each calendar month.`)
+  clause(ctx, '3.', 'The landlord must provide a receipt for any payment of rent if the tenant asks for one.')
 
-  // Term 3 — Tenant's right of possession
-  termHeading(ctx, 'Term 3 — Tenant\'s Right of Possession')
-  drawText(ctx, '3(1) The landlord must ensure that the tenant has possession of the let property on the start date.')
-  gap(ctx, 4)
-  drawText(ctx, '3(2) The landlord must not interfere with the tenant\'s peaceful enjoyment of the let property.')
+  // ── Statutory Term 2 — Rent Increases ───────────────────────────────────
+  term(ctx, 'Statutory Term 2 — Rent Increases')
+  clause(ctx, '1.', 'The landlord may increase the rent by giving the tenant at least 3 months\' written notice of the increase.')
+  clause(ctx, '2.', 'The rent may not be increased more than once in any 12-month period.')
+  clause(ctx, '3.', 'The tenant may refer an increase to a rent officer for determination under section 24 of the Private Housing (Tenancies) (Scotland) Act 2016.')
 
-  // Term 4 — Repairs and maintenance
-  termHeading(ctx, 'Term 4 — Repairs and Maintenance')
-  drawText(ctx, '4(1) The landlord must keep the let property, and any installations in it for the supply of water, gas, electricity, sanitation, space heating, and water heating, in repair and proper working order.')
-  gap(ctx, 4)
-  drawText(ctx, '4(2) The tenant must allow the landlord (or anyone authorised by the landlord) access to carry out repairs, inspections, or safety checks, provided that the landlord gives at least 24 hours\' written notice, except in an emergency.')
-  gap(ctx, 4)
-  drawText(ctx, '4(3) The tenant must report to the landlord any defect or disrepair in the let property as soon as they become aware of it.')
-  gap(ctx, 4)
-  drawText(ctx, '4(4) The tenant must not carry out any alterations, additions, or improvements to the let property without the prior written consent of the landlord.')
+  // ── Statutory Term 3 — Repairs and Maintenance ──────────────────────────
+  term(ctx, 'Statutory Term 3 — Repairs and Maintenance')
+  clause(ctx, '1.', 'The landlord must ensure that, at the start of the tenancy and throughout, the let property is: (a) wind and watertight and in all other respects reasonably fit for people to live in; (b) in a reasonable state of repair; and (c) in reasonable working order.')
+  clause(ctx, '2.', 'The landlord must keep in repair and proper working order any installation in the let property for the supply of water, gas or electricity, and for space heating or heating water.')
+  clause(ctx, '3.', 'The tenant must allow the landlord (or any person authorised by the landlord) reasonable access to the let property to carry out an inspection or to carry out works necessary to comply with any obligation under the tenancy or any enactment. The landlord must give the tenant at least 24 hours\' notice before accessing the let property, except in an emergency.')
+  clause(ctx, '4.', 'The tenant must report to the landlord any defect in the let property as soon as the tenant becomes aware of it.')
+  clause(ctx, '5.', 'The tenant must not carry out any alterations or improvements to the let property without the prior written consent of the landlord.')
 
-  // Term 5 — Care of the property
-  termHeading(ctx, 'Term 5 — Care of Property')
-  drawText(ctx, '5(1) The tenant must take reasonable care of the let property and its contents, and must not cause, or allow, the let property or its contents to be damaged beyond fair wear and tear.')
-  gap(ctx, 4)
-  drawText(ctx, '5(2) The tenant must keep the interior of the let property in a clean and tidy condition.')
-  gap(ctx, 4)
-  drawText(ctx, '5(3) The tenant is responsible for maintaining the garden (if any) of the let property in a reasonable condition unless the tenancy agreement provides otherwise.')
+  // ── Statutory Term 4 — Care of the Let Property ─────────────────────────
+  term(ctx, 'Statutory Term 4 — Care of the Let Property')
+  clause(ctx, '1.', 'The tenant must take reasonable care of the let property. The tenant must not cause, or allow any person in the let property to cause, the let property or any common parts to be damaged, or to deteriorate beyond fair wear and tear.')
+  clause(ctx, '2.', 'The tenant must keep the let property and any furnishings in it in a clean and tidy condition throughout the tenancy, and must leave it in a clean and tidy condition at the end of the tenancy.')
+  clause(ctx, '3.', 'At the end of the tenancy the tenant must remove all the tenant\'s belongings from the let property.')
 
-  // Term 6 — Utilities and council tax
-  termHeading(ctx, 'Term 6 — Utilities and Council Tax')
-  drawText(ctx, '6(1) Unless the tenancy agreement provides otherwise, the tenant is responsible for paying all charges in respect of any electricity, gas, telephony, broadband, and other utilities used at the let property during the tenancy.')
-  gap(ctx, 4)
-  drawText(ctx, '6(2) Unless the tenancy agreement provides otherwise, the tenant is responsible for paying council tax during the tenancy.')
+  // ── Statutory Term 5 — Utility Charges and Council Tax ──────────────────
+  term(ctx, 'Statutory Term 5 — Utility Charges and Council Tax')
+  clause(ctx, '1.', 'Unless the tenancy agreement otherwise provides, the tenant is responsible for: (a) the payment of any charges for electricity, gas and other fuels, and for water, used in the let property; and (b) the payment of council tax in respect of the let property during the tenancy.')
 
-  // Term 7 — Subletting and assignation
-  termHeading(ctx, 'Term 7 — Subletting and Assignation')
-  drawText(ctx, '7(1) The tenant must not sublet the let property, or any part of it, or assign the tenancy without the prior written consent of the landlord.')
-  gap(ctx, 4)
-  drawText(ctx, '7(2) The landlord must not unreasonably refuse consent. If the landlord refuses, the reasons must be given in writing.')
+  // ── Statutory Term 6 — Subletting and Assignation ───────────────────────
+  term(ctx, 'Statutory Term 6 — Subletting and Assignation')
+  clause(ctx, '1.', 'The tenant must not sublet the let property, or any part of it, or otherwise grant to any person the right to occupy the let property or any part of it (whether on a permanent or temporary basis) without the prior written consent of the landlord.')
+  clause(ctx, '2.', 'The tenant must not assign the tenancy without the prior written consent of the landlord.')
+  clause(ctx, '3.', 'The landlord must not unreasonably withhold consent for subletting or assignation. Where the landlord refuses consent, the landlord must give written reasons.')
 
-  // Term 8 — Conduct and use
-  termHeading(ctx, 'Term 8 — Conduct and Use')
-  drawText(ctx, '8(1) The tenant must not use the let property, or allow it to be used, for any illegal or immoral purpose.')
-  gap(ctx, 4)
-  drawText(ctx, '8(2) The tenant must not behave, or allow anyone living in or visiting the let property to behave, in an antisocial manner in the let property or in the locality of the let property. Antisocial behaviour means conduct that is, or is likely to be, a nuisance or annoyance to any person.')
+  // ── Statutory Term 7 — Antisocial Behaviour ─────────────────────────────
+  term(ctx, 'Statutory Term 7 — Antisocial Behaviour')
+  clause(ctx, '1.', 'The tenant must not use the let property, or allow it to be used, for any immoral or illegal purpose.')
+  clause(ctx, '2.', 'The tenant must not act in an antisocial manner, and must not allow any person living with the tenant or any visitor to the let property to act in an antisocial manner in relation to other occupants of the let property or persons residing in the locality.')
+  clause(ctx, '3.', 'For the purposes of this term, behaviour is "antisocial" if the person engaging in the behaviour causes or is likely to cause alarm, distress, nuisance or annoyance to any person.')
 
-  // Term 9 — Abandonment
-  termHeading(ctx, 'Term 9 — Abandonment')
-  drawText(ctx, '9(1) If the landlord reasonably believes that the let property has been abandoned by the tenant, the landlord may, after following the procedure set out in sections 21 to 23 of the Private Housing (Tenancies) (Scotland) Act 2016, repossess the let property.')
+  // ── Statutory Term 8 — Visits and Inspections ───────────────────────────
+  term(ctx, 'Statutory Term 8 — Permission for Landlord to Enter')
+  clause(ctx, '1.', 'The tenant must allow the landlord, or any person authorised by the landlord, reasonable access to the let property for the purposes of: (a) viewing the condition and state of repair of the let property; (b) carrying out any works required in order to comply with any obligation of the landlord under the tenancy; or (c) carrying out any works required by any enactment.')
+  clause(ctx, '2.', 'The landlord must give the tenant at least 24 hours\' notice before accessing the let property except in the case of emergency.')
 
-  // Term 10 — Ending the tenancy by the tenant
-  termHeading(ctx, 'Term 10 — Ending the Tenancy by the Tenant')
-  drawText(ctx, '10(1) The tenant may end the tenancy by giving the landlord not less than 28 days\' written notice of the date on which the tenant intends the tenancy to end.')
-  gap(ctx, 4)
-  drawText(ctx, '10(2) The notice must be in writing and signed by the tenant.')
+  // ── Statutory Term 9 — Abandoned Property ───────────────────────────────
+  term(ctx, 'Statutory Term 9 — Abandoned Let Property')
+  clause(ctx, '1.', 'If the tenant has abandoned the let property the landlord may repossess it without a tribunal order by following the procedure set out in sections 21 to 23 of the Private Housing (Tenancies) (Scotland) Act 2016.')
 
-  // Term 11 — Ending the tenancy by the landlord
-  termHeading(ctx, 'Term 11 — Ending the Tenancy by the Landlord (Eviction)')
-  drawText(ctx, '11(1) The landlord may apply to the First-tier Tribunal for Scotland (Housing and Property Chamber) to end this tenancy only on one or more of the grounds for eviction set out in schedule 3 of the Private Housing (Tenancies) (Scotland) Act 2016.')
-  gap(ctx, 4)
-  drawText(ctx, '11(2) The landlord must serve a Notice to Leave on the tenant before making an application to the Tribunal. The notice period is at least 28 days if the tenant has been in occupation for 6 months or less, or at least 84 days if the tenant has been in occupation for more than 6 months, unless the ground for eviction specifies a different notice period.')
-  gap(ctx, 4)
-  drawText(ctx, '11(3) The landlord cannot end this tenancy without an order from the First-tier Tribunal for Scotland (Housing and Property Chamber), except where the tenant voluntarily gives up possession.')
+  // ── Statutory Term 10 — Ending the Tenancy (Tenant) ─────────────────────
+  term(ctx, 'Statutory Term 10 — Ending the Tenancy by the Tenant')
+  clause(ctx, '1.', 'The tenant may bring the tenancy to an end by giving the landlord written notice of not less than 28 days.')
+  clause(ctx, '2.', 'A notice under this term must be in writing and signed by the tenant. A notice period of less than 28 days may be accepted by agreement between the landlord and tenant.')
 
-  // Term 12 — Information and documents
-  termHeading(ctx, 'Term 12 — Information and Documents')
-  drawText(ctx, '12(1) The landlord must give the tenant a copy of the Easy Read Notes for the Scottish Government Model Private Residential Tenancy Agreement at or before the start of the tenancy.')
-  gap(ctx, 4)
-  drawText(ctx, '12(2) The landlord must provide the tenant with the landlord\'s contact details, or the contact details of any letting agent acting for the landlord, within 28 days of the start of the tenancy.')
+  // ── Statutory Term 11 — Ending the Tenancy (Landlord) ───────────────────
+  term(ctx, 'Statutory Term 11 — Ending the Tenancy by the Landlord')
+  clause(ctx, '1.', 'The landlord may bring the tenancy to an end only by: (a) serving a Notice to Leave on the tenant; and (b) applying to the First-tier Tribunal for Scotland (Housing and Property Chamber) for an eviction order if the tenant does not leave.')
+  clause(ctx, '2.', 'The Notice to Leave must state: (a) the ground or grounds for eviction (as set out in Schedule 3 to the Private Housing (Tenancies) (Scotland) Act 2016); (b) the notice period, which must be at least 28 days if the tenant has occupied the property for 6 months or less, or at least 84 days in any other case, unless the ground specifies a different notice period.')
+  clause(ctx, '3.', 'The landlord cannot remove the tenant from the let property, or otherwise require the tenant to leave, except by obtaining an eviction order from the First-tier Tribunal.')
 
-  // ── PART 3 — SIGNATURES ─────────────────────────────────────────────────
-  sectionHeading(ctx, 'PART 3 — SIGNATURES')
+  // ── Statutory Term 12 — Repossession and Information ────────────────────
+  term(ctx, 'Statutory Term 12 — Information for Tenant')
+  clause(ctx, '1.', 'Before or at the start of the tenancy the landlord must give the tenant a copy of: (a) this tenancy agreement; (b) the Easy Read Notes for the Scottish Government Model Private Residential Tenancy Agreement.')
+  clause(ctx, '2.', 'The landlord must provide the tenant with the landlord\'s contact details (name and address or telephone number or email address) so that the tenant can contact the landlord in connection with the tenancy.')
+
+  // ── PART 4 — DOMESTIC ABUSE PROVISION ─────────────────────────────────────
+  h1(ctx, 'PART 4 — DOMESTIC ABUSE PROVISION (April 2024 update)')
+  gap(ctx, 2)
+  text(ctx, 'The following provision reflects the amendments made by the Domestic Abuse (Protection) (Scotland) Act 2021 and applies to this tenancy.', { size: FS_SMALL, color: GRAY })
+  gap(ctx, 6)
+  clause(ctx, '1.', 'Where a domestic abuse protection order (DAPO) has been made under the Domestic Abuse (Protection) (Scotland) Act 2021, and the order prohibits the perpetrator from occupying the let property, the tenancy continues as the sole tenancy of the protected person if the let property is the protected person\'s only or principal home.')
+  clause(ctx, '2.', 'Where this applies, the landlord must not terminate the tenancy of the protected person solely by reason of the perpetrator\'s exclusion from the let property.')
+
+  // ── PART 5 — SIGNATURES ────────────────────────────────────────────────────
+  h1(ctx, 'PART 5 — SIGNATURES')
   gap(ctx, 4)
-  drawText(ctx, 'By signing below the parties confirm they have read and agree to the terms of this tenancy agreement.')
-  gap(ctx, 20)
+  text(ctx, 'The parties confirm that they have read this tenancy agreement and agree to be bound by its terms.')
+  gap(ctx, 24)
 
   const sigY = ctx.y
-  ensureSpace(ctx, 80)
-  const page = currentPage(ctx)
+  need(ctx, 90)
+  const pg = page(ctx)
 
-  // Landlord sig block
-  page.drawLine({ start: { x: MARGIN, y: sigY - 20 }, end: { x: MARGIN + 200, y: sigY - 20 }, thickness: 0.5, color: BLACK })
-  page.drawText('Landlord / Authorised Agent signature', { x: MARGIN, y: sigY - 34, size: FONT_SIZE_SMALL, font: regular, color: GRAY })
-  page.drawLine({ start: { x: MARGIN, y: sigY - 50 }, end: { x: MARGIN + 100, y: sigY - 50 }, thickness: 0.5, color: BLACK })
-  page.drawText('Date', { x: MARGIN, y: sigY - 64, size: FONT_SIZE_SMALL, font: regular, color: GRAY })
+  // Landlord
+  pg.drawLine({ start: { x: MARGIN, y: sigY - 20 }, end: { x: MARGIN + 195, y: sigY - 20 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Landlord / authorised agent signature', { x: MARGIN, y: sigY - 32, size: FS_SMALL, font: regular, color: GRAY })
+  pg.drawLine({ start: { x: MARGIN, y: sigY - 50 }, end: { x: MARGIN + 100, y: sigY - 50 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Date', { x: MARGIN, y: sigY - 62, size: FS_SMALL, font: regular, color: GRAY })
+  pg.drawLine({ start: { x: MARGIN, y: sigY - 80 }, end: { x: MARGIN + 195, y: sigY - 80 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Print name', { x: MARGIN, y: sigY - 92, size: FS_SMALL, font: regular, color: GRAY })
 
-  // Tenant sig block
-  page.drawLine({ start: { x: MARGIN + 260, y: sigY - 20 }, end: { x: MARGIN + 460, y: sigY - 20 }, thickness: 0.5, color: BLACK })
-  page.drawText('Tenant signature', { x: MARGIN + 260, y: sigY - 34, size: FONT_SIZE_SMALL, font: regular, color: GRAY })
-  page.drawLine({ start: { x: MARGIN + 260, y: sigY - 50 }, end: { x: MARGIN + 360, y: sigY - 50 }, thickness: 0.5, color: BLACK })
-  page.drawText('Date', { x: MARGIN + 260, y: sigY - 64, size: FONT_SIZE_SMALL, font: regular, color: GRAY })
+  // Tenant
+  const tx = MARGIN + 255
+  pg.drawLine({ start: { x: tx, y: sigY - 20 }, end: { x: tx + 195, y: sigY - 20 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Tenant signature', { x: tx, y: sigY - 32, size: FS_SMALL, font: regular, color: GRAY })
+  pg.drawLine({ start: { x: tx, y: sigY - 50 }, end: { x: tx + 100, y: sigY - 50 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Date', { x: tx, y: sigY - 62, size: FS_SMALL, font: regular, color: GRAY })
+  pg.drawLine({ start: { x: tx, y: sigY - 80 }, end: { x: tx + 195, y: sigY - 80 }, thickness: 0.5, color: BLACK })
+  pg.drawText('Print name', { x: tx, y: sigY - 92, size: FS_SMALL, font: regular, color: GRAY })
 
-  ctx.y = sigY - 80
+  ctx.y = sigY - 100
 
-  // ── Footer on every page ─────────────────────────────────────────────────
-  const totalPages = ctx.pages.length
-  for (let i = 0; i < totalPages; i++) {
-    const pg = ctx.pages[i]
-    pg.drawText(
-      `${data.tenancyReference}  ·  PropVault  ·  Page ${i + 1} of ${totalPages}`,
-      { x: MARGIN, y: MARGIN - 16, size: FONT_SIZE_SMALL, font: regular, color: GRAY }
+  // ── Page footers ──────────────────────────────────────────────────────────
+  const total = ctx.pages.length
+  for (let i = 0; i < total; i++) {
+    ctx.pages[i].drawText(
+      `${data.tenancyReference}  ·  Private Residential Tenancy  ·  Page ${i + 1} of ${total}`,
+      { x: MARGIN, y: MARGIN - 18, size: FS_SMALL, font: regular, color: GRAY }
     )
   }
 
