@@ -27,9 +27,37 @@ export async function createProspectiveTenant(
     return { error: 'First name, last name, and email are required.' }
   }
 
-  // Basic email format check
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: 'Please enter a valid email address.' }
+  }
+
+  // Check for existing tenant with this email (prospective or active)
+  const { data: existingTenant } = await supabase
+    .from('tenants')
+    .select('id, first_name, last_name, status')
+    .eq('email', email)
+    .in('status', ['prospective', 'active'])
+    .maybeSingle()
+
+  if (existingTenant) {
+    const name = `${existingTenant.first_name} ${existingTenant.last_name}`
+    const statusLabel = existingTenant.status === 'active' ? 'an active tenant' : 'a prospective tenant'
+    return {
+      error: `${name} (${email}) already exists as ${statusLabel}. Check the Tenants list.`,
+    }
+  }
+
+  // Warn if email matches an internal user (landlord/manager)
+  const { data: internalUser } = await supabase
+    .from('users')
+    .select('name, role')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (internalUser) {
+    return {
+      error: `This email belongs to an internal user (${internalUser.name}, ${internalUser.role.replace('_', ' ')}). Internal users cannot be added as prospective tenants.`,
+    }
   }
 
   const token = crypto.randomUUID()
@@ -48,9 +76,6 @@ export async function createProspectiveTenant(
     .single()
 
   if (error) {
-    if (error.code === '23505') {
-      return { error: 'A tenant with this email already exists.' }
-    }
     return { error: 'Failed to create tenant. Please try again.' }
   }
 
