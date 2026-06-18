@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { ComplianceCard } from '@/components/ui/ComplianceCard'
-import type { Property, LegalEntity } from '@/types'
+import type { Property, LegalEntity, Reminder } from '@/types'
 
 type PropertyWithEntity = Property & {
   legal_entities: Pick<LegalEntity, 'name' | 'type'>
@@ -11,13 +11,37 @@ type PropertyWithEntity = Property & {
 
 type BadgeVariant = 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple'
 
+const REMINDER_LABELS: Record<Reminder['type'], string> = {
+  gas_safety: 'Gas Safety Certificate',
+  eicr: 'EICR',
+  epc: 'EPC',
+  hmo_licence: 'HMO Licence',
+  deposit_lodgement: 'Deposit Lodgement',
+  council_tax: 'Council Tax',
+  right_to_rent: 'Right to Rent',
+  rent_due: 'Rent Due',
+}
+
 function statusVariant(status: Property['status']): BadgeVariant {
   switch (status) {
     case 'available': return 'green'
-    case 'occupied': return 'blue'
+    case 'occupied':  return 'blue'
     case 'maintenance': return 'yellow'
-    case 'asset': return 'gray'
+    case 'asset':     return 'gray'
   }
+}
+
+function reminderVariant(dueDate: string): BadgeVariant {
+  const days = Math.floor((new Date(dueDate).getTime() - Date.now()) / 86400000)
+  if (days < 0) return 'red'
+  if (days <= 30) return 'yellow'
+  return 'gray'
+}
+
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
 }
 
 interface PropertyDetailPageProps {
@@ -31,11 +55,20 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: property } = await supabase
-    .from('properties')
-    .select('*, legal_entities(name, type)')
-    .eq('id', id)
-    .single<PropertyWithEntity>()
+  const [{ data: property }, { data: reminders }] = await Promise.all([
+    supabase
+      .from('properties')
+      .select('*, legal_entities(name, type)')
+      .eq('id', id)
+      .single<PropertyWithEntity>(),
+    supabase
+      .from('reminders')
+      .select('*')
+      .eq('property_id', id)
+      .eq('status', 'pending')
+      .order('due_date', { ascending: true })
+      .returns<Reminder[]>(),
+  ])
 
   if (!property) notFound()
 
@@ -45,6 +78,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     property.city,
     property.postcode,
   ].filter(Boolean).join(', ')
+
+  const pendingReminders = reminders ?? []
 
   return (
     <div className="space-y-8">
@@ -114,6 +149,34 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           )}
         </div>
       </div>
+
+      {/* Pending reminders */}
+      {pendingReminders.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Pending reminders</h2>
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            {pendingReminders.map((reminder) => {
+              const days = Math.floor((new Date(reminder.due_date).getTime() - Date.now()) / 86400000)
+              const overdue = days < 0
+              return (
+                <div key={reminder.id} className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${overdue ? 'bg-red-500' : days <= 30 ? 'bg-yellow-400' : 'bg-gray-300'}`} />
+                    <span className="text-sm text-gray-900">{REMINDER_LABELS[reminder.type] ?? reminder.type}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-500">{formatDate(reminder.due_date)}</span>
+                    <Badge
+                      label={overdue ? 'Overdue' : days === 0 ? 'Today' : `${days}d`}
+                      variant={reminderVariant(reminder.due_date)}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
