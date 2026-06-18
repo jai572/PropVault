@@ -141,7 +141,9 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       <div>
         <h2 className="text-base font-semibold text-gray-900 mb-4">Compliance certificates</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <ComplianceCard title="Gas Safety Certificate" expiry={property.gas_safety_expiry} />
+          {property.has_gas && (
+            <ComplianceCard title="Gas Safety Certificate" expiry={property.gas_safety_expiry} />
+          )}
           <ComplianceCard title="EICR" expiry={property.eicr_expiry} />
           <ComplianceCard title="EPC" expiry={property.epc_expiry} />
           {property.is_hmo && (

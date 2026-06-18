@@ -31,6 +31,7 @@ export interface Property {
   is_hmo: boolean
   hmo_licence_number: string | null
   hmo_licence_expiry: string | null
+  has_gas: boolean
   status: 'available' | 'occupied' | 'maintenance' | 'asset'
   epc_expiry: string | null
   gas_safety_expiry: string | null
