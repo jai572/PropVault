@@ -90,28 +90,40 @@ export default async function TenantsPage() {
                 {list.map((tenant) => {
                   const docCount = docCountByTenant.get(tenant.id) ?? 0
                   return (
-                    <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={tenant.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <Link href={`/tenants/${tenant.id}`} className="hover:underline">
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full text-blue-600 hover:text-blue-800 hover:underline">
                           {tenant.first_name} {tenant.last_name}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{tenant.email}</td>
-                      <td className="px-6 py-4">
-                        <Badge label={tenant.status} variant={statusVariant(tenant.status)} />
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full">
+                          {tenant.email}
+                        </Link>
                       </td>
                       <td className="px-6 py-4">
-                        {tenant.right_to_rent_verified ? (
-                          <Badge label="Verified" variant="green" />
-                        ) : (
-                          <Badge label="Pending" variant="gray" />
-                        )}
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full">
+                          <Badge label={tenant.status} variant={statusVariant(tenant.status)} />
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full">
+                          {tenant.right_to_rent_verified ? (
+                            <Badge label="Verified" variant="green" />
+                          ) : (
+                            <Badge label="Pending" variant="gray" />
+                          )}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {docCount > 0 ? `${docCount} file${docCount !== 1 ? 's' : ''}` : '—'}
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full">
+                          {docCount > 0 ? `${docCount} file${docCount !== 1 ? 's' : ''}` : '—'}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-400">
-                        {new Date(tenant.created_at).toLocaleDateString('en-GB')}
+                        <Link href={`/tenants/${tenant.id}`} className="block w-full">
+                          {new Date(tenant.created_at).toLocaleDateString('en-GB')}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-right">
                         {tenant.status === 'prospective' && (
@@ -134,17 +146,16 @@ export default async function TenantsPage() {
             {list.map((tenant) => {
               const docCount = docCountByTenant.get(tenant.id) ?? 0
               return (
-                <div key={tenant.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div key={tenant.id} className="relative bg-white rounded-xl border border-gray-200 p-4">
+                  <Link href={`/tenants/${tenant.id}`} className="absolute inset-0 rounded-xl" aria-label={`${tenant.first_name} ${tenant.last_name}`} />
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <Link href={`/tenants/${tenant.id}`} className="text-sm font-medium text-gray-900 hover:underline">
-                        {tenant.first_name} {tenant.last_name}
-                      </Link>
+                      <p className="text-sm font-medium text-blue-600">{tenant.first_name} {tenant.last_name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{tenant.email}</p>
                     </div>
                     <Badge label={tenant.status} variant={statusVariant(tenant.status)} />
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="relative mt-2 flex items-center justify-between gap-2 z-10">
                     <div className="flex items-center gap-2">
                       {tenant.right_to_rent_verified ? (
                         <Badge label="Right to Rent verified" variant="green" />
