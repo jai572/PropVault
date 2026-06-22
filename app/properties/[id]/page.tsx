@@ -3,7 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { ComplianceCard } from '@/components/ui/ComplianceCard'
-import type { Property, LegalEntity, Reminder } from '@/types'
+import PropertyFacilitiesPanel from './PropertyFacilitiesPanel'
+import type { Property, LegalEntity, Reminder, PropertyFacility } from '@/types'
 
 type PropertyWithEntity = Property & {
   legal_entities: Pick<LegalEntity, 'name' | 'type'>
@@ -55,7 +56,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: property }, { data: reminders }] = await Promise.all([
+  const [{ data: property }, { data: reminders }, { data: facilitiesData }] = await Promise.all([
     supabase
       .from('properties')
       .select('*, legal_entities(name, type)')
@@ -68,9 +69,17 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       .eq('status', 'pending')
       .order('due_date', { ascending: true })
       .returns<Reminder[]>(),
+    supabase
+      .from('property_facilities')
+      .select('*')
+      .eq('property_id', id)
+      .order('sort_order', { ascending: true })
+      .returns<PropertyFacility[]>(),
   ])
 
   if (!property) notFound()
+
+  const facilities = facilitiesData ?? []
 
   const fullAddress = [
     property.address_line_1,
@@ -179,6 +188,19 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           </div>
         </div>
       )}
+
+      {/* Property facilities */}
+      <div>
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Property Facilities</h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Included, shared, and excluded areas — used in Section 5 of every PRT generated for this property.
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <PropertyFacilitiesPanel propertyId={id} facilities={facilities} />
+        </div>
+      </div>
     </div>
   )
 }

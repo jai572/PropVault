@@ -208,3 +208,12 @@ export interface MeterReading {
   submitted_by_tenant: string | null
   submitted_at: string
 }
+
+export interface PropertyFacility {
+  id: string
+  property_id: string
+  facility_name: string
+  type: 'included' | 'shared' | 'excluded'
+  sort_order: number
+  created_at: string
+}

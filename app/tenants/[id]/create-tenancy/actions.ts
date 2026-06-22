@@ -183,9 +183,22 @@ export async function createTenancyAndGeneratePRT(
   const tenantCurrentAddress = sanitiseText(formData.get('tenant_current_address') as string ?? '') || null
   const propertyType         = sanitiseText(formData.get('property_type')          as string ?? '') || null
   const furnishedStatus      = sanitiseText(formData.get('furnished_status')       as string ?? '') || null
-  const sharedAreas          = sanitiseText(formData.get('shared_areas')           as string ?? '') || null
-  const excludedAreas        = sanitiseText(formData.get('excluded_areas')         as string ?? '') || null
-  const parkingDescription   = sanitiseText(formData.get('parking_description')    as string ?? '') || null
+
+  // Fetch property facilities (set on the property record, not from the form)
+  const { data: facilitiesData } = await supabase
+    .from('property_facilities')
+    .select('facility_name, type')
+    .eq('property_id', property.id)
+    .order('sort_order', { ascending: true })
+
+  const facilities = facilitiesData ?? []
+  const joinNames = (type: string) => {
+    const names = facilities.filter(f => f.type === type).map(f => f.facility_name)
+    return names.length > 0 ? names.join(', ') : null
+  }
+  const includedAreas = joinNames('included')
+  const sharedAreas   = joinNames('shared')
+  const excludedAreas = joinNames('excluded')
 
   // Format DOB for display if provided (ISO → "DD Month YYYY")
   let dobDisplay: string | null = null
@@ -214,9 +227,9 @@ export async function createTenancyAndGeneratePRT(
     furnishedStatus,
     isHmo: property.is_hmo,
     hmoLicenceNumber: property.hmo_licence_number ?? null,
+    includedAreas,
     sharedAreas,
     excludedAreas,
-    parkingDescription,
     hasGas: property.has_gas,
     startDate: fields.startDate,
     rentAmount: fields.rentAmount,

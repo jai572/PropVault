@@ -27,9 +27,9 @@ export interface PRTData {
   furnishedStatus: string | null       // e.g. "Furnished — see Inventory and Record of Condition"
   isHmo: boolean
   hmoLicenceNumber: string | null
-  sharedAreas: string | null           // e.g. "Common stair and entrance"
-  excludedAreas: string | null         // e.g. "None"
-  parkingDescription: string | null    // e.g. "No parking is included with this tenancy"
+  includedAreas: string | null         // comma-joined facilities with type='included'
+  sharedAreas: string | null           // comma-joined facilities with type='shared'
+  excludedAreas: string | null         // comma-joined facilities with type='excluded'
   hasGas: boolean
   // Tenancy dates
   startDate: string                    // ISO
@@ -391,9 +391,9 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   lv(c, 'HMO', data.isHmo
     ? `Yes — House in Multiple Occupation${data.hmoLicenceNumber ? ` (Licence: ${data.hmoLicenceNumber})` : ''}`
     : 'The Let Property is not a House in Multiple Occupation (HMO)')
-  if (data.sharedAreas)       lv(c, 'Shared Areas/Facilities',    data.sharedAreas)
-  if (data.excludedAreas)     lv(c, 'Excluded Areas/Facilities',  data.excludedAreas)
-  if (data.parkingDescription) lv(c, 'Parking',                   data.parkingDescription)
+  if (data.includedAreas)  lv(c, 'Included Areas/Facilities', data.includedAreas)
+  if (data.sharedAreas)   lv(c, 'Shared Areas/Facilities',   data.sharedAreas)
+  if (data.excludedAreas) lv(c, 'Excluded Areas/Facilities', data.excludedAreas)
 
   // ── 6. START DATE OF THE TENANCY ──────────────────────────────────────────
   sectionTitle(c, '6', 'START DATE OF THE TENANCY')
@@ -795,8 +795,8 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
 
     txt(c, 'k) Parking', { font: bold })
     gap(c, 3)
-    txt(c, data.parkingDescription
-      ? `${data.parkingDescription} The Tenant must not use any associated parking areas without the prior written consent of the Landlord.`
+    txt(c, data.includedAreas?.toLowerCase().includes('parking')
+      ? `Parking is included with this tenancy as stated in Section 5 above. The Tenant must not use any parking areas not specified without the prior written consent of the Landlord.`
       : 'No parking is included with this tenancy. The Tenant must not use any associated parking areas without the prior written consent of the Landlord.')
     gap(c, 6)
 

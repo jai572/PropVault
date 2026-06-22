@@ -181,6 +181,9 @@ export default function CreateTenancyForm({ tenantId, tenantName, tenantEmail, i
           {mode === 'generate' && (
             <fieldset className="space-y-4">
               <legend className="text-sm font-semibold text-gray-800">Property description for PRT</legend>
+              <p className="text-xs text-gray-500 -mt-2">
+                Included / shared / excluded facilities are inherited from the property record.
+              </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -210,48 +213,6 @@ export default function CreateTenancyForm({ tenantId, tenantName, tenantEmail, i
                     {FURNISHED_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="shared_areas" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Shared areas <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  id="shared_areas"
-                  name="shared_areas"
-                  type="text"
-                  placeholder="e.g. Common stair and entrance"
-                  autoComplete="off"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="excluded_areas" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Excluded areas <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  id="excluded_areas"
-                  name="excluded_areas"
-                  type="text"
-                  placeholder="e.g. None"
-                  autoComplete="off"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="parking_description" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Parking <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  id="parking_description"
-                  name="parking_description"
-                  type="text"
-                  placeholder="e.g. No parking is included with this tenancy"
-                  autoComplete="off"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-                />
               </div>
             </fieldset>
           )}
