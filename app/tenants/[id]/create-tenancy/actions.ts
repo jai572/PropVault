@@ -60,6 +60,7 @@ async function insertTenancy(
     isHmo: boolean
     internalUserId: string
     tenantId: string
+    coTenantIds: string[]
     startDate: string
     rentAmount: number
     rentDueDay: number
@@ -107,13 +108,18 @@ async function insertTenancy(
     return { error: 'Failed to create tenancy record. Please try again.' }
   }
 
+  const ttRows = [
+    { tenancy_id: tenancy.id, tenant_id: args.tenantId, is_lead_tenant: true },
+    ...args.coTenantIds.map(id => ({ tenancy_id: tenancy.id, tenant_id: id, is_lead_tenant: false })),
+  ]
+
   const { error: ttError } = await supabase
     .from('tenancy_tenants')
-    .insert({ tenancy_id: tenancy.id, tenant_id: args.tenantId, is_lead_tenant: true })
+    .insert(ttRows)
 
   if (ttError) {
     await supabase.from('tenancies').delete().eq('id', tenancy.id)
-    return { error: 'Failed to link tenant to tenancy. Please try again.' }
+    return { error: 'Failed to link tenants to tenancy. Please try again.' }
   }
 
   // Mark property as occupied (service client bypasses RLS)
@@ -156,6 +162,39 @@ async function resolveContext(tenantId: string, internalUserId: string, supabase
   return { tenant, internalUser }
 }
 
+// ── Shared: validate co-tenants and return their records ─────────────────────
+async function resolveCoTenants(
+  coTenantIds: string[],
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<{ coTenants: { id: string; first_name: string; last_name: string; email: string }[] } | { error: string }> {
+  if (coTenantIds.length === 0) return { coTenants: [] }
+
+  const { data, error } = await supabase
+    .from('tenants')
+    .select('id, first_name, last_name, email, status, right_to_rent_verified')
+    .in('id', coTenantIds)
+
+  if (error || !data) return { error: 'Failed to load co-tenant records.' }
+
+  for (const ct of data) {
+    if (!ct.right_to_rent_verified) {
+      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} does not have Right to Rent verified. All tenants must be verified before creating a joint tenancy.` }
+    }
+    if (ct.status !== 'prospective') {
+      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} is not in prospective status and cannot be added to a new tenancy.` }
+    }
+  }
+
+  return { coTenants: data }
+}
+
+// ── Helper: format ISO date as "DD Month YYYY" ────────────────────────────────
+function formatDob(raw: string | null): string | null {
+  if (!raw || !DATE_RE.test(raw)) return null
+  const d = new Date(raw + 'T00:00:00')
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 // ── Action: generate PRT ──────────────────────────────────────────────────────
 export async function createTenancyAndGeneratePRT(
   tenantId: string,
@@ -174,6 +213,11 @@ export async function createTenancyAndGeneratePRT(
   if ('error' in ctx) return { error: ctx.error }
   const { tenant, internalUser } = ctx
 
+  const coTenantIds = (formData.getAll('co_tenant_id') as string[]).filter(Boolean)
+  const coCtx = await resolveCoTenants(coTenantIds, supabase)
+  if ('error' in coCtx) return { error: coCtx.error }
+  const { coTenants } = coCtx
+
   const { data: property } = await supabase
     .from('properties')
     .select('id, address_line_1, address_line_2, city, postcode, is_hmo, hmo_licence_number, hmo_licence_expiry, has_gas, legal_entity_id')
@@ -190,6 +234,7 @@ export async function createTenancyAndGeneratePRT(
 
   const result = await insertTenancy(supabase, {
     propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
+    coTenantIds,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,
     depositReference: fields.depositReference, roomReference: fields.roomReference,
@@ -198,7 +243,7 @@ export async function createTenancyAndGeneratePRT(
 
   const propertyAddress = [property.address_line_1, property.address_line_2, property.city, property.postcode].filter(Boolean).join(', ')
 
-  // Read PRT-specific form fields
+  // Read PRT-specific form fields for lead tenant
   const tenantDob            = sanitiseText(formData.get('tenant_dob')             as string ?? '') || null
   const tenantPassport       = sanitiseText(formData.get('tenant_passport')        as string ?? '') || null
   const tenantNationality    = sanitiseText(formData.get('tenant_nationality')     as string ?? '') || null
@@ -206,7 +251,27 @@ export async function createTenancyAndGeneratePRT(
   const propertyType         = sanitiseText(formData.get('property_type')          as string ?? '') || null
   const furnishedStatus      = sanitiseText(formData.get('furnished_status')       as string ?? '') || null
 
-  // Fetch property facilities (set on the property record, not from the form)
+  // Build tenants array: lead + co-tenants
+  const prtTenants = [
+    {
+      fullName: `${tenant.first_name} ${tenant.last_name}`,
+      dateOfBirth: formatDob(tenantDob),
+      passportNumber: tenantPassport,
+      nationality: tenantNationality,
+      currentAddress: tenantCurrentAddress,
+      email: tenant.email,
+    },
+    ...coTenants.map(ct => ({
+      fullName: `${ct.first_name} ${ct.last_name}`,
+      dateOfBirth: formatDob(sanitiseText(formData.get(`co_dob_${ct.id}`) as string ?? '') || null),
+      passportNumber: sanitiseText(formData.get(`co_passport_${ct.id}`) as string ?? '') || null,
+      nationality: sanitiseText(formData.get(`co_nationality_${ct.id}`) as string ?? '') || null,
+      currentAddress: sanitiseText(formData.get(`co_address_${ct.id}`) as string ?? '') || null,
+      email: ct.email,
+    })),
+  ]
+
+  // Fetch property facilities
   const { data: facilitiesData } = await supabase
     .from('property_facilities')
     .select('facility_name, type')
@@ -218,27 +283,10 @@ export async function createTenancyAndGeneratePRT(
     const names = facilities.filter(f => f.type === type).map(f => f.facility_name)
     return names.length > 0 ? names.join(', ') : null
   }
-  const includedAreas = joinNames('included')
-  const sharedAreas   = joinNames('shared')
-  const excludedAreas = joinNames('excluded')
-
-  // Format DOB for display if provided (ISO → "DD Month YYYY")
-  let dobDisplay: string | null = null
-  if (tenantDob && /^\d{4}-\d{2}-\d{2}$/.test(tenantDob)) {
-    const d = new Date(tenantDob + 'T00:00:00')
-    dobDisplay = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-  }
 
   const prtBytes = await generatePRT({
     tenancyReference: result.tenancyReference,
-    tenants: [{
-      fullName: `${tenant.first_name} ${tenant.last_name}`,
-      dateOfBirth: dobDisplay,
-      passportNumber: tenantPassport,
-      nationality: tenantNationality,
-      currentAddress: tenantCurrentAddress,
-      email: tenant.email,
-    }],
+    tenants: prtTenants,
     landlordName: legalEntity.name,
     landlordRegistrationNumber: legalEntity.landlord_registration_number ?? null,
     landlordAddress: legalEntity.address ?? null,
@@ -249,9 +297,9 @@ export async function createTenancyAndGeneratePRT(
     furnishedStatus,
     isHmo: property.is_hmo,
     hmoLicenceNumber: property.hmo_licence_number ?? null,
-    includedAreas,
-    sharedAreas,
-    excludedAreas,
+    includedAreas: joinNames('included'),
+    sharedAreas: joinNames('shared'),
+    excludedAreas: joinNames('excluded'),
     hasGas: property.has_gas,
     startDate: fields.startDate,
     rentAmount: fields.rentAmount,
@@ -279,7 +327,13 @@ export async function createTenancyAndGeneratePRT(
     })
   }
 
+  // Activate lead tenant + all co-tenants
   await activateTenant(tenantId, tenant.email)
+  for (const ct of coTenants) {
+    await activateTenant(ct.id, ct.email)
+    revalidatePath(`/tenants/${ct.id}`)
+  }
+
   revalidatePath(`/tenants/${tenantId}`)
   revalidatePath('/tenants')
   return { tenancyId: result.tenancyId, tenancyReference: result.tenancyReference }
@@ -309,6 +363,11 @@ export async function createTenancyWithUpload(
   if ('error' in ctx) return { error: ctx.error }
   const { tenant, internalUser } = ctx
 
+  const coTenantIds = (formData.getAll('co_tenant_id') as string[]).filter(Boolean)
+  const coCtx = await resolveCoTenants(coTenantIds, supabase)
+  if ('error' in coCtx) return { error: coCtx.error }
+  const { coTenants } = coCtx
+
   const { data: property } = await supabase
     .from('properties')
     .select('id, is_hmo, legal_entity_id')
@@ -318,6 +377,7 @@ export async function createTenancyWithUpload(
 
   const result = await insertTenancy(supabase, {
     propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
+    coTenantIds,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,
     depositReference: fields.depositReference, roomReference: fields.roomReference,
@@ -341,11 +401,17 @@ export async function createTenancyWithUpload(
     await serviceClient.from('documents').insert({
       tenancy_id: result.tenancyId, property_id: property.id,
       type: 'PRT', file_url: prtPath,
-      uploaded_by: internalUser.id, delivered_to_tenant: true, // pre-signed so already delivered
+      uploaded_by: internalUser.id, delivered_to_tenant: true,
     })
   }
 
+  // Activate lead tenant + all co-tenants
   await activateTenant(tenantId, tenant.email)
+  for (const ct of coTenants) {
+    await activateTenant(ct.id, ct.email)
+    revalidatePath(`/tenants/${ct.id}`)
+  }
+
   revalidatePath(`/tenants/${tenantId}`)
   revalidatePath('/tenants')
   return { tenancyId: result.tenancyId, tenancyReference: result.tenancyReference }
