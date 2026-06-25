@@ -116,6 +116,10 @@ async function insertTenancy(
     return { error: 'Failed to link tenant to tenancy. Please try again.' }
   }
 
+  // Mark property as occupied (use service client to bypass any RLS gaps)
+  const svc = createServiceClient()
+  await svc.from('properties').update({ status: 'occupied' }).eq('id', args.propertyId)
+
   return { tenancyId: tenancy.id, tenancyReference: tenancy.tenancy_reference }
 }
 

@@ -111,6 +111,13 @@ export interface Tenancy {
   deposit_amount: number | null
   deposit_scheme: string | null
   deposit_reference: string | null
+  deposit_status: 'pending' | 'refunded' | 'retained' | 'disputed'
+  deposit_refund_amount: number | null
+  deposit_resolution_notes: string | null
+  deposit_resolved_at: string | null
+  closure_reason: 'tenant_notice' | 'landlord_notice' | 'mutual_agreement' | 'other' | null
+  closure_reason_other: string | null
+  closure_notes: string | null
   room_reference: string | null
   jurisdiction: 'scotland' | 'england_wales'
   created_at: string

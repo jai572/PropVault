@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
   }
 
-  const path = request.nextUrl.searchParams.get('path')
+  const path   = request.nextUrl.searchParams.get('path')
+  const bucket = request.nextUrl.searchParams.get('bucket') ?? 'right-to-rent-documents'
+
   if (!path || typeof path !== 'string') {
     return NextResponse.json({ error: 'Missing path' }, { status: 400 })
   }
@@ -23,10 +25,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
 
+  // Only allow known private buckets
+  const ALLOWED_BUCKETS = ['right-to-rent-documents', 'prt-documents']
+  if (!ALLOWED_BUCKETS.includes(bucket)) {
+    return NextResponse.json({ error: 'Invalid bucket' }, { status: 400 })
+  }
+
   const serviceClient = createServiceClient()
 
   const { data, error } = await serviceClient.storage
-    .from('right-to-rent-documents')
+    .from(bucket)
     .createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS)
 
   if (error || !data?.signedUrl) {
