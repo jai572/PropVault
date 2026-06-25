@@ -4,6 +4,13 @@ import Link from 'next/link'
 import CreateTenancyForm from './CreateTenancyForm'
 import type { Tenant, Property } from '@/types'
 
+export type CoTenantOption = {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+}
+
 export default async function CreateTenancyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
@@ -42,6 +49,20 @@ export default async function CreateTenancyPage({ params }: { params: Promise<{ 
     'is_hmo' | 'hmo_licence_number' | 'hmo_licence_expiry' | 'has_gas' | 'legal_entity_id'
   >[]
 
+  // Fetch other prospective, verified tenants in the same legal entity for joint tenancy
+  const { data: coTenantData } = tenant.legal_entity_id
+    ? await supabase
+        .from('tenants')
+        .select('id, first_name, last_name, email')
+        .eq('status', 'prospective')
+        .eq('right_to_rent_verified', true)
+        .eq('legal_entity_id', tenant.legal_entity_id)
+        .neq('id', id)
+        .order('last_name')
+    : { data: [] }
+
+  const availableCoTenants: CoTenantOption[] = (coTenantData ?? []) as CoTenantOption[]
+
   return (
     <div className="max-w-2xl space-y-6">
       <Link
@@ -64,6 +85,7 @@ export default async function CreateTenancyPage({ params }: { params: Promise<{ 
         tenantEmail={tenant.email}
         internalUserId={internalUser.id}
         properties={properties}
+        availableCoTenants={availableCoTenants}
       />
     </div>
   )
