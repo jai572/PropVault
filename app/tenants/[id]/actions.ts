@@ -5,6 +5,51 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { sanitiseText } from '@/lib/utils/sanitise'
 
+const LINK_EXPIRY_MS = 72 * 60 * 60 * 1000
+
+export interface ResendLinkState {
+  error?: string
+  linkUrl?: string
+  newExpiresAt?: string
+}
+
+export async function resendOrRegenerateLink(tenantId: string): Promise<ResendLinkState> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('id, status, unique_link_token, link_expires_at, created_at')
+    .eq('id', tenantId)
+    .single()
+
+  if (!tenant)                        return { error: 'Tenant not found.' }
+  if (tenant.status !== 'prospective') return { error: 'Link can only be sent to prospective tenants.' }
+
+  const newExpiresAt = new Date(Date.now() + LINK_EXPIRY_MS).toISOString()
+
+  // Determine whether the current link is still live
+  const currentExpiry = tenant.link_expires_at
+    ? new Date(tenant.link_expires_at)
+    : new Date(new Date(tenant.created_at).getTime() + LINK_EXPIRY_MS)
+
+  const isExpired  = Date.now() > currentExpiry.getTime()
+  const newToken   = isExpired ? crypto.randomUUID() : tenant.unique_link_token!
+
+  const { error } = await supabase
+    .from('tenants')
+    .update({ unique_link_token: newToken, link_expires_at: newExpiresAt })
+    .eq('id', tenantId)
+
+  if (error) return { error: 'Failed to update link. Please try again.' }
+
+  revalidatePath(`/tenants/${tenantId}`)
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  return { linkUrl: `${appUrl}/portal/apply/${newToken}`, newExpiresAt }
+}
+
 export interface VerifyRightToRentState {
   error?: string
   success?: boolean

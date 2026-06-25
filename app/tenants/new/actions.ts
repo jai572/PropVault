@@ -75,6 +75,7 @@ export async function createProspectiveTenant(
   }
 
   const token = crypto.randomUUID()
+  const linkExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
 
   const { data, error } = await supabase
     .from('tenants')
@@ -85,6 +86,7 @@ export async function createProspectiveTenant(
       phone: phone || null,
       status: 'prospective',
       unique_link_token: token,
+      link_expires_at: linkExpiresAt,
       created_by_user_id: internalUser.id,
       legal_entity_id: legalEntityId,
     })

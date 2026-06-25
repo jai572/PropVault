@@ -92,6 +92,7 @@ export interface Tenant {
   right_to_rent_document_type: string | null
   right_to_rent_expiry: string | null
   unique_link_token: string | null
+  link_expires_at: string | null
   created_by_user_id: string | null
   legal_entity_id: string | null
   created_at: string

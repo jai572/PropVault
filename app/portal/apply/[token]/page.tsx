@@ -17,14 +17,18 @@ export default async function ApplyPage({ params }: ApplyPageProps) {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, first_name, status, created_at')
+    .select('id, first_name, status, created_at, link_expires_at')
     .eq('unique_link_token', token)
     .single()
 
   if (!tenant || tenant.status !== 'prospective') return <InvalidPage />
 
-  const tokenAge = Date.now() - new Date(tenant.created_at).getTime()
-  if (tokenAge > TOKEN_EXPIRY_MS) return <ExpiredPage />
+  // Use link_expires_at if set (post-migration); fall back to created_at + 72h for legacy rows
+  const expiresAt = tenant.link_expires_at
+    ? new Date(tenant.link_expires_at)
+    : new Date(new Date(tenant.created_at).getTime() + TOKEN_EXPIRY_MS)
+
+  if (Date.now() > expiresAt.getTime()) return <ExpiredPage />
 
   // Count documents already submitted by this tenant so the form can show the running tally
   const { count: existingCount } = await supabase
@@ -33,7 +37,6 @@ export default async function ApplyPage({ params }: ApplyPageProps) {
     .eq('type', 'right_to_rent')
     .like('file_url', `${tenant.id}/%`)
 
-  const expiresAt = new Date(new Date(tenant.created_at).getTime() + TOKEN_EXPIRY_MS)
   const expiryString = expiresAt.toLocaleString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit',

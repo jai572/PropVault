@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import VerifyRightToRent from './VerifyRightToRent'
+import ResendLinkPanel from './ResendLinkPanel'
 import type { Tenant } from '@/types'
 
 type BadgeVariant = 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple'
@@ -175,6 +176,15 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
             Create PRT
           </Link>
         </div>
+      )}
+
+      {/* Tenant application link — resend/regenerate for prospective tenants */}
+      {tenant.status === 'prospective' && tenant.unique_link_token && (
+        <ResendLinkPanel
+          tenantId={tenant.id}
+          linkExpiresAt={tenant.link_expires_at ?? null}
+          createdAt={tenant.created_at}
+        />
       )}
 
       {/* Verification form — shown only if not yet verified and docs exist */}

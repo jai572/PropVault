@@ -57,6 +57,7 @@ async function insertTenancy(
   supabase: Awaited<ReturnType<typeof createClient>>,
   args: {
     propertyId: string
+    isHmo: boolean
     internalUserId: string
     tenantId: string
     startDate: string
@@ -68,6 +69,19 @@ async function insertTenancy(
     roomReference: string | null
   }
 ): Promise<{ tenancyId: string; tenancyReference: string } | { error: string }> {
+  // For non-HMO properties, block if an active tenancy already exists
+  if (!args.isHmo) {
+    const { count } = await supabase
+      .from('tenancies')
+      .select('*', { count: 'exact', head: true })
+      .eq('property_id', args.propertyId)
+      .eq('status', 'active')
+
+    if (count && count > 0) {
+      return { error: 'This property already has an active tenancy and is not marked as an HMO. Close the existing tenancy before creating a new one.' }
+    }
+  }
+
   const { data: tenancy, error: tenancyError } = await supabase
     .from('tenancies')
     .insert({
@@ -167,7 +181,7 @@ export async function createTenancyAndGeneratePRT(
   if (!legalEntity) return { error: 'Could not retrieve landlord details for this property.' }
 
   const result = await insertTenancy(supabase, {
-    propertyId: property.id, internalUserId: internalUser.id, tenantId,
+    propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,
     depositReference: fields.depositReference, roomReference: fields.roomReference,
@@ -289,13 +303,13 @@ export async function createTenancyWithUpload(
 
   const { data: property } = await supabase
     .from('properties')
-    .select('id, legal_entity_id')
+    .select('id, is_hmo, legal_entity_id')
     .eq('id', fields.propertyId)
     .single()
   if (!property) return { error: 'Property not found or not accessible.' }
 
   const result = await insertTenancy(supabase, {
-    propertyId: property.id, internalUserId: internalUser.id, tenantId,
+    propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,
     depositReference: fields.depositReference, roomReference: fields.roomReference,
