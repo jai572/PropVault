@@ -26,7 +26,7 @@ export default async function TenantsPage() {
   const { data: tenants, error } = await supabase
     .from('tenants')
     .select('*')
-    .in('status', ['prospective', 'active'])
+    .neq('status', 'purged')
     .order('created_at', { ascending: false })
     .returns<Tenant[]>()
 
