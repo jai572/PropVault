@@ -69,7 +69,11 @@ export async function closeTenancy(
 
   if (!activeCount || activeCount === 0) {
     const svc = createServiceClient()
-    await svc.from('properties').update({ status: 'available' }).eq('id', propertyId)
+    const { error: propError } = await svc
+      .from('properties')
+      .update({ status: 'available' })
+      .eq('id', propertyId)
+    if (propError) console.error('Property status → available failed:', propError)
   }
 
   // Move tenant to closed status
