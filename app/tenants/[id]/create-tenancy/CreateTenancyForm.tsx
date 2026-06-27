@@ -13,6 +13,8 @@ interface Props {
   internalUserId: string
   properties: Pick<Property, 'id' | 'address_line_1' | 'address_line_2' | 'city' | 'postcode' | 'is_hmo' | 'hmo_licence_number' | 'hmo_licence_expiry' | 'has_gas' | 'legal_entity_id'>[]
   availableCoTenants: CoTenantOption[]
+  defaultPropertyId?: string
+  defaultCoTenantIds?: string[]
 }
 
 const initialState: CreateTenancyState = {}
@@ -36,9 +38,10 @@ function isoToDisplay(iso: string): string {
 
 export default function CreateTenancyForm({
   tenantId, tenantName, tenantEmail, internalUserId, properties, availableCoTenants,
+  defaultPropertyId, defaultCoTenantIds,
 }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
-  const [selectedCoTenantIds, setSelectedCoTenantIds] = useState<string[]>([])
+  const [selectedCoTenantIds, setSelectedCoTenantIds] = useState<string[]>(defaultCoTenantIds ?? [])
 
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
   const uploadAction   = createTenancyWithUpload.bind(null, tenantId, internalUserId)
@@ -254,7 +257,7 @@ export default function CreateTenancyForm({
             <label htmlFor="property_id" className="block text-sm font-medium text-gray-700 mb-1.5">
               Property <span className="text-red-500">*</span>
             </label>
-            <select id="property_id" name="property_id" required defaultValue=""
+            <select id="property_id" name="property_id" required defaultValue={defaultPropertyId ?? ''}
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
             >
               <option value="" disabled>Select property…</option>

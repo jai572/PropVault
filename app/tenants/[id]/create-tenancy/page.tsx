@@ -11,8 +11,16 @@ export type CoTenantOption = {
   email: string
 }
 
-export default async function CreateTenancyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CreateTenancyPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ property_id?: string; co_tenant_ids?: string }>
+}) {
   const { id } = await params
+  const { property_id: defaultPropertyId, co_tenant_ids: coTenantIdsRaw } = await searchParams
+  const defaultCoTenantIds = coTenantIdsRaw ? coTenantIdsRaw.split(',').filter(Boolean) : []
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -86,6 +94,8 @@ export default async function CreateTenancyPage({ params }: { params: Promise<{ 
         internalUserId={internalUser.id}
         properties={properties}
         availableCoTenants={availableCoTenants}
+        defaultPropertyId={defaultPropertyId}
+        defaultCoTenantIds={defaultCoTenantIds}
       />
     </div>
   )

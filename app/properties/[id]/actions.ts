@@ -60,3 +60,35 @@ export async function removeFacility(propertyId: string, facilityId: string): Pr
   await supabase.from('property_facilities').delete().eq('id', facilityId)
   revalidatePath(`/properties/${propertyId}`)
 }
+
+export async function resolveComm(propertyId: string, commId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('communications')
+    .update({ status: 'resolved' })
+    .eq('id', commId)
+
+  if (error) return { error: 'Failed to resolve communication.' }
+  revalidatePath(`/properties/${propertyId}`)
+  revalidatePath('/dashboard')
+  return {}
+}
+
+export async function completeMaintJob(propertyId: string, jobId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('maintenance_jobs')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', jobId)
+
+  if (error) return { error: 'Failed to complete maintenance job.' }
+  revalidatePath(`/properties/${propertyId}`)
+  revalidatePath('/dashboard')
+  return {}
+}

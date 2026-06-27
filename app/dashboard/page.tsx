@@ -12,17 +12,15 @@ type BadgeVariant = 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple'
 
 function statusVariant(status: Property['status']): BadgeVariant {
   switch (status) {
-    case 'available': return 'green'
-    case 'occupied': return 'blue'
+    case 'available':   return 'green'
+    case 'occupied':    return 'blue'
     case 'maintenance': return 'yellow'
-    case 'asset': return 'gray'
+    case 'asset':       return 'gray'
   }
 }
 
 function formatAddress(property: Property): string {
-  return [property.address_line_1, property.address_line_2]
-    .filter(Boolean)
-    .join(', ')
+  return [property.address_line_1, property.address_line_2].filter(Boolean).join(', ')
 }
 
 export default async function DashboardPage() {
@@ -30,11 +28,23 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: properties, error } = await supabase
-    .from('properties')
-    .select('*, legal_entities(name)')
-    .order('legal_entity_id')
-    .returns<PropertyWithEntity[]>()
+  const [
+    { data: properties, error },
+    { data: allTenancies },
+    { data: openComms },
+    { data: openMaint },
+    { data: openViewing },
+  ] = await Promise.all([
+    supabase
+      .from('properties')
+      .select('*, legal_entities(name)')
+      .order('legal_entity_id')
+      .returns<PropertyWithEntity[]>(),
+    supabase.from('tenancies').select('id, property_id'),
+    supabase.from('communications').select('tenancy_id').in('status', ['open', 'in_progress']),
+    supabase.from('maintenance_jobs').select('property_id').in('status', ['reported', 'assigned']),
+    supabase.from('viewing_jobs').select('property_id').in('status', ['assigned', 'confirmed']),
+  ])
 
   if (error) {
     return (
@@ -43,6 +53,18 @@ export default async function DashboardPage() {
       </div>
     )
   }
+
+  // Build indicator sets keyed by property_id
+  const tenancyToProperty = new Map(
+    (allTenancies ?? []).map(t => [t.id as string, t.property_id as string])
+  )
+  const commDot = new Set<string>()
+  for (const c of openComms ?? []) {
+    const propId = tenancyToProperty.get(c.tenancy_id as string)
+    if (propId) commDot.add(propId)
+  }
+  const maintDot = new Set((openMaint ?? []).map(m => m.property_id as string))
+  const viewingDot = new Set((openViewing ?? []).map(v => v.property_id as string))
 
   const grouped = (properties ?? []).reduce<Record<string, PropertyWithEntity[]>>(
     (acc, property) => {
@@ -58,87 +80,82 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Properties</h1>
-          <p className="mt-1 text-sm text-gray-500">{totalProperties} properties across all entities</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {totalProperties} {totalProperties === 1 ? 'property' : 'properties'} across all entities
+          </p>
         </div>
       </div>
 
-      {/* Property list grouped by legal entity */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         {Object.entries(grouped).map(([entityName, entityProperties]) => (
           <section key={entityName}>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
               {entityName} — {entityProperties.length} {entityProperties.length === 1 ? 'property' : 'properties'}
             </h2>
 
-            {/* Desktop table */}
-            <div className="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beds</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HMO</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {entityProperties.map((property) => (
-                    <tr key={property.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
-                      <td className="px-6 py-4">
-                        <Link href={`/properties/${property.id}`} className="block">
-                          <div className="text-sm font-medium text-gray-900 hover:text-gray-600">{formatAddress(property)}</div>
-                          <div className="text-xs text-gray-400">{property.city} · {property.postcode}</div>
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 capitalize">{property.property_type ?? '—'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{property.bedrooms ?? '—'}</td>
-                      <td className="px-6 py-4">
-                        {property.is_hmo ? (
-                          <Badge label="HMO" variant="purple" />
-                        ) : (
-                          <span className="text-sm text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge label={property.status} variant={statusVariant(property.status)} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {entityProperties.map((property) => {
+                const hasComm    = commDot.has(property.id)
+                const hasMaint   = maintDot.has(property.id)
+                const hasViewing = viewingDot.has(property.id)
 
-            {/* Mobile card list */}
-            <div className="sm:hidden space-y-2">
-              {entityProperties.map((property) => (
-                <Link
-                  key={property.id}
-                  href={`/properties/${property.id}`}
-                  className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{formatAddress(property)}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{property.city} · {property.postcode}</p>
+                return (
+                  <Link
+                    key={property.id}
+                    href={`/properties/${property.id}`}
+                    className="group block bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-400 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 group-hover:text-gray-700 truncate">
+                          {formatAddress(property)}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">{property.city} · {property.postcode}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {property.is_hmo && <Badge label="HMO" variant="purple" />}
+                        <Badge label={property.status} variant={statusVariant(property.status)} />
+                      </div>
                     </div>
-                    <Badge label={property.status} variant={statusVariant(property.status)} />
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    {property.property_type && (
-                      <span className="text-xs text-gray-500 capitalize">{property.property_type}</span>
-                    )}
-                    {property.bedrooms && (
-                      <span className="text-xs text-gray-500">{property.bedrooms} bed</span>
-                    )}
-                    {property.is_hmo && <Badge label="HMO" variant="purple" />}
-                  </div>
-                </Link>
-              ))}
+
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        {property.property_type && (
+                          <span className="capitalize">{property.property_type}</span>
+                        )}
+                        {property.bedrooms != null && (
+                          <span>{property.bedrooms} bed</span>
+                        )}
+                      </div>
+                      {(hasComm || hasMaint || hasViewing) && (
+                        <div className="flex items-center gap-1.5">
+                          {hasComm && (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full bg-blue-500 flex-shrink-0"
+                              title="Open communications"
+                            />
+                          )}
+                          {hasMaint && (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full bg-amber-400 flex-shrink-0"
+                              title="Open maintenance jobs"
+                            />
+                          )}
+                          {hasViewing && (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full bg-violet-500 flex-shrink-0"
+                              title="Open viewing jobs"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </section>
         ))}
