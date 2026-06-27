@@ -58,35 +58,19 @@ export default async function CreateTenancyPage({
     'is_hmo' | 'hmo_licence_number' | 'hmo_licence_expiry' | 'has_gas' | 'legal_entity_id'
   >[]
 
-  const isSuperAdmin = internalUser.role === 'super_admin'
-
-  // super_admin sees co-tenants across all entities; owner/manager scoped to the lead tenant's entity
-  const { data: coTenantData } = isSuperAdmin
+  // Co-tenants always scoped to the lead tenant's own legal entity on this path
+  const { data: coTenantData } = tenant.legal_entity_id
     ? await supabase
         .from('tenants')
-        .select('id, first_name, last_name, email, legal_entities(name)')
+        .select('id, first_name, last_name, email')
         .in('status', ['prospective', 'closed'])
         .eq('right_to_rent_verified', true)
+        .eq('legal_entity_id', tenant.legal_entity_id)
         .neq('id', id)
         .order('last_name')
-    : tenant.legal_entity_id
-      ? await supabase
-          .from('tenants')
-          .select('id, first_name, last_name, email')
-          .in('status', ['prospective', 'closed'])
-          .eq('right_to_rent_verified', true)
-          .eq('legal_entity_id', tenant.legal_entity_id)
-          .neq('id', id)
-          .order('last_name')
-      : { data: [] }
+    : { data: [] }
 
-  const availableCoTenants: CoTenantOption[] = (coTenantData ?? []).map((ct: Record<string, unknown>) => ({
-    id:                ct.id as string,
-    first_name:        ct.first_name as string,
-    last_name:         ct.last_name as string,
-    email:             ct.email as string,
-    legal_entity_name: isSuperAdmin ? ((ct.legal_entities as { name: string } | null)?.name ?? null) : null,
-  }))
+  const availableCoTenants: CoTenantOption[] = (coTenantData ?? []) as CoTenantOption[]
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -113,7 +97,6 @@ export default async function CreateTenancyPage({
         availableCoTenants={availableCoTenants}
         defaultPropertyId={defaultPropertyId}
         defaultCoTenantIds={defaultCoTenantIds}
-        showEntityName={isSuperAdmin}
       />
     </div>
   )

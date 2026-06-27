@@ -50,6 +50,14 @@ export default function CreateTenancyForm({
 
   const [selectedCoTenantIds, setSelectedCoTenantIds] = useState<string[]>(defaultCoTenantIds ?? [])
 
+  // Names used in the submission notice — resolved from locked list or free selection
+  const coTenantNames = lockedCoTenants
+    ? lockedCoTenants.map(ct => `${ct.first_name} ${ct.last_name}`)
+    : selectedCoTenantIds
+        .map(sid => availableCoTenants.find(ct => ct.id === sid))
+        .filter((ct): ct is typeof availableCoTenants[number] => ct !== undefined)
+        .map(ct => `${ct.first_name} ${ct.last_name}`)
+
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
   const uploadAction   = createTenancyWithUpload.bind(null, tenantId, internalUserId)
 
@@ -493,7 +501,7 @@ export default function CreateTenancyForm({
           )}
 
           <p className="text-xs text-gray-400">
-            On submission: {tenantName}{selectedCoTenantIds.length > 0 ? ' and all joint tenants' : ''} will be moved
+            On submission: {[tenantName, ...coTenantNames].join(', ')} will be moved
             to <strong>active</strong> status and portal account invitations will be sent.
           </p>
 
