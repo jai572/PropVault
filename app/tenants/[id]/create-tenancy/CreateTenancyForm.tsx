@@ -15,6 +15,7 @@ interface Props {
   availableCoTenants: CoTenantOption[]
   defaultPropertyId?: string
   defaultCoTenantIds?: string[]
+  showEntityName?: boolean
 }
 
 const initialState: CreateTenancyState = {}
@@ -38,7 +39,7 @@ function isoToDisplay(iso: string): string {
 
 export default function CreateTenancyForm({
   tenantId, tenantName, tenantEmail, internalUserId, properties, availableCoTenants,
-  defaultPropertyId, defaultCoTenantIds,
+  defaultPropertyId, defaultCoTenantIds, showEntityName,
 }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
 
@@ -183,7 +184,12 @@ export default function CreateTenancyForm({
                       <div className="mt-0.5 h-4 w-4 rounded border border-gray-300 bg-gray-200 flex-shrink-0" aria-hidden="true" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900">{ct.first_name} {ct.last_name}</p>
-                        <p className="text-xs text-gray-500">{ct.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {ct.email}
+                          {showEntityName && ct.legal_entity_name && (
+                            <span className="ml-1.5 text-gray-400">· {ct.legal_entity_name}</span>
+                          )}
+                        </p>
                       </div>
                     </div>
 
@@ -276,7 +282,12 @@ export default function CreateTenancyForm({
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900">{ct.first_name} {ct.last_name}</p>
-                          <p className="text-xs text-gray-500">{ct.email}</p>
+                          <p className="text-xs text-gray-500">
+                            {ct.email}
+                            {showEntityName && ct.legal_entity_name && (
+                              <span className="ml-1.5 text-gray-400">· {ct.legal_entity_name}</span>
+                            )}
+                          </p>
                         </div>
                       </label>
 

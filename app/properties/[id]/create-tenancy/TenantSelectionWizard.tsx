@@ -9,14 +9,16 @@ interface TenantOption {
   last_name: string
   email: string
   status: 'prospective' | 'closed'
+  legal_entity_name?: string | null
 }
 
 interface Props {
   propertyId: string
   availableTenants: TenantOption[]
+  showEntityName?: boolean
 }
 
-export default function TenantSelectionWizard({ propertyId, availableTenants }: Props) {
+export default function TenantSelectionWizard({ propertyId, availableTenants, showEntityName }: Props) {
   const router = useRouter()
   const [step, setStep]           = useState<1 | 2>(1)
   const [count, setCount]         = useState(1)
@@ -103,7 +105,7 @@ export default function TenantSelectionWizard({ propertyId, availableTenants }: 
                   .filter(t => !selectedIds.some((id, j) => j !== i && id === t.id))
                   .map(t => (
                     <option key={t.id} value={t.id}>
-                      {t.first_name} {t.last_name} — {t.email}{t.status === 'closed' ? ' (returning)' : ''}
+                      {t.first_name} {t.last_name} — {t.email}{t.status === 'closed' ? ' (returning)' : ''}{showEntityName && t.legal_entity_name ? ` · ${t.legal_entity_name}` : ''}
                     </option>
                   ))}
               </select>
