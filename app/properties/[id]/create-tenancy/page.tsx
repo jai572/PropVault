@@ -9,6 +9,7 @@ type TenantOption = {
   first_name: string
   last_name: string
   email: string
+  status: 'prospective' | 'closed'
 }
 
 interface Props {
@@ -34,8 +35,8 @@ export default async function PropertyCreateTenancyPage({ params }: Props) {
   const { data: tenantData } = property.legal_entity_id
     ? await supabase
         .from('tenants')
-        .select('id, first_name, last_name, email')
-        .eq('status', 'prospective')
+        .select('id, first_name, last_name, email, status')
+        .in('status', ['prospective', 'closed'])
         .eq('right_to_rent_verified', true)
         .eq('legal_entity_id', property.legal_entity_id)
         .order('last_name')

@@ -8,6 +8,7 @@ interface TenantOption {
   first_name: string
   last_name: string
   email: string
+  status: 'prospective' | 'closed'
 }
 
 interface Props {
@@ -102,7 +103,7 @@ export default function TenantSelectionWizard({ propertyId, availableTenants }: 
                   .filter(t => !selectedIds.some((id, j) => j !== i && id === t.id))
                   .map(t => (
                     <option key={t.id} value={t.id}>
-                      {t.first_name} {t.last_name} — {t.email}
+                      {t.first_name} {t.last_name} — {t.email}{t.status === 'closed' ? ' (returning)' : ''}
                     </option>
                   ))}
               </select>

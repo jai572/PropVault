@@ -62,7 +62,7 @@ export default async function CreateTenancyPage({
     ? await supabase
         .from('tenants')
         .select('id, first_name, last_name, email')
-        .eq('status', 'prospective')
+        .in('status', ['prospective', 'closed'])
         .eq('right_to_rent_verified', true)
         .eq('legal_entity_id', tenant.legal_entity_id)
         .neq('id', id)

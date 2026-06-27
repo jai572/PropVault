@@ -180,8 +180,8 @@ async function resolveCoTenants(
     if (!ct.right_to_rent_verified) {
       return { error: `Co-tenant ${ct.first_name} ${ct.last_name} does not have Right to Rent verified. All tenants must be verified before creating a joint tenancy.` }
     }
-    if (ct.status !== 'prospective') {
-      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} is not in prospective status and cannot be added to a new tenancy.` }
+    if (ct.status !== 'prospective' && ct.status !== 'closed') {
+      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} has status "${ct.status}" and cannot be added to a new tenancy.` }
     }
   }
 
