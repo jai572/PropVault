@@ -41,6 +41,12 @@ export default function CreateTenancyForm({
   defaultPropertyId, defaultCoTenantIds,
 }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
+
+  // When arriving from the property wizard, co-tenants are already finalised
+  const lockedCoTenants = defaultCoTenantIds && defaultCoTenantIds.length > 0
+    ? availableCoTenants.filter(ct => defaultCoTenantIds.includes(ct.id))
+    : null
+
   const [selectedCoTenantIds, setSelectedCoTenantIds] = useState<string[]>(defaultCoTenantIds ?? [])
 
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
@@ -157,7 +163,95 @@ export default function CreateTenancyForm({
           )}
 
           {/* ── Joint tenants ── */}
-          {availableCoTenants.length > 0 && (
+          {lockedCoTenants ? (
+            /* Locked mode: co-tenants were chosen in the property wizard — display only */
+            <fieldset className="space-y-3">
+              <div>
+                <legend className="text-sm font-semibold text-gray-800">Joint tenants</legend>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Selected in the previous step. Tenant composition is fixed for this tenancy.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {lockedCoTenants.map(ct => (
+                  <div key={ct.id} className="space-y-3">
+                    {/* Hidden input so the action receives the co-tenant id */}
+                    <input type="hidden" name="co_tenant_id" value={ct.id} />
+
+                    <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="mt-0.5 h-4 w-4 rounded border border-gray-300 bg-gray-200 flex-shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{ct.first_name} {ct.last_name}</p>
+                        <p className="text-xs text-gray-500">{ct.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Per co-tenant PRT details — generate mode only */}
+                    {mode === 'generate' && (
+                      <div className="ml-7 space-y-3 border-l-2 border-gray-200 pl-4">
+                        <p className="text-xs font-medium text-gray-600">
+                          Details for {ct.first_name} {ct.last_name}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label htmlFor={`co_dob_${ct.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                              Date of birth
+                            </label>
+                            <input
+                              id={`co_dob_${ct.id}`}
+                              name={`co_dob_${ct.id}`}
+                              type="date"
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor={`co_nationality_${ct.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                              Nationality
+                            </label>
+                            <input
+                              id={`co_nationality_${ct.id}`}
+                              name={`co_nationality_${ct.id}`}
+                              type="text"
+                              placeholder="e.g. British"
+                              autoComplete="off"
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label htmlFor={`co_passport_${ct.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                            Passport / ID number
+                          </label>
+                          <input
+                            id={`co_passport_${ct.id}`}
+                            name={`co_passport_${ct.id}`}
+                            type="text"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`co_address_${ct.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                            Current address (pre-tenancy)
+                          </label>
+                          <input
+                            id={`co_address_${ct.id}`}
+                            name={`co_address_${ct.id}`}
+                            type="text"
+                            placeholder="e.g. 12 Example Street, Aberdeen, AB12 3CD"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          ) : availableCoTenants.length > 0 ? (
+            /* Free-selection mode: arrived directly at the tenant create-tenancy page */
             <fieldset className="space-y-3">
               <div>
                 <legend className="text-sm font-semibold text-gray-800">Joint tenants</legend>
@@ -186,7 +280,6 @@ export default function CreateTenancyForm({
                         </div>
                       </label>
 
-                      {/* Per co-tenant details — generate mode only, shown when selected */}
                       {isSelected && mode === 'generate' && (
                         <div className="ml-7 space-y-3 border-l-2 border-gray-200 pl-4">
                           <p className="text-xs font-medium text-gray-600">
@@ -250,7 +343,7 @@ export default function CreateTenancyForm({
                 })}
               </div>
             </fieldset>
-          )}
+          ) : null}
 
           {/* ── Property ── */}
           <div>
