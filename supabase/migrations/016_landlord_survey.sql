@@ -1,0 +1,95 @@
+-- Landlord survey responses — completely standalone, no FK to PropVault tables
+CREATE TABLE landlord_survey_responses (
+  id            UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+  submitted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Section 1: current setup
+  property_count        TEXT,
+  agent_use             TEXT,
+  fee_management_band   TEXT,
+  fee_tenantfind_amount TEXT,
+  fee_renewal_amount    TEXT,
+  fee_other_amount      TEXT,
+  fee_exit_amount       TEXT,
+  vat_basis             TEXT,
+  fee_total_monthly     TEXT,
+  tool_spreadsheet      BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_accounting       BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_landlord_software BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_compliance       BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_other            BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_none             BOOLEAN NOT NULL DEFAULT FALSE,
+  tool_cost             TEXT,
+  agent_tenure          TEXT,
+
+  -- Section 2: task matrix (one handled + one followup per task)
+  task_marketing_handled          BOOLEAN NOT NULL DEFAULT FALSE,
+  task_marketing_followup         TEXT,
+  task_viewings_handled           BOOLEAN NOT NULL DEFAULT FALSE,
+  task_viewings_followup          TEXT,
+  task_referencing_handled        BOOLEAN NOT NULL DEFAULT FALSE,
+  task_referencing_followup       TEXT,
+  task_tenancy_agreement_handled  BOOLEAN NOT NULL DEFAULT FALSE,
+  task_tenancy_agreement_followup TEXT,
+  task_inventory_handled          BOOLEAN NOT NULL DEFAULT FALSE,
+  task_inventory_followup         TEXT,
+  task_deposit_handled            BOOLEAN NOT NULL DEFAULT FALSE,
+  task_deposit_followup           TEXT,
+  task_rent_collection_handled    BOOLEAN NOT NULL DEFAULT FALSE,
+  task_rent_collection_followup   TEXT,
+  task_rent_statements_handled    BOOLEAN NOT NULL DEFAULT FALSE,
+  task_rent_statements_followup   TEXT,
+  task_late_rent_handled          BOOLEAN NOT NULL DEFAULT FALSE,
+  task_late_rent_followup         TEXT,
+  task_maintenance_handled        BOOLEAN NOT NULL DEFAULT FALSE,
+  task_maintenance_followup       TEXT,
+  task_inspections_handled        BOOLEAN NOT NULL DEFAULT FALSE,
+  task_inspections_followup       TEXT,
+  task_compliance_handled         BOOLEAN NOT NULL DEFAULT FALSE,
+  task_compliance_followup        TEXT,
+  task_notices_handled            BOOLEAN NOT NULL DEFAULT FALSE,
+  task_notices_followup           TEXT,
+  task_disputes_handled           BOOLEAN NOT NULL DEFAULT FALSE,
+  task_disputes_followup          TEXT,
+  task_council_tax_handled        BOOLEAN NOT NULL DEFAULT FALSE,
+  task_council_tax_followup       TEXT,
+  task_remarketing_handled        BOOLEAN NOT NULL DEFAULT FALSE,
+  task_remarketing_followup       TEXT,
+
+  -- Section 3: self-management experience
+  tried_self        TEXT,
+  went_back_reason  TEXT,
+  still_self_reason TEXT,
+  never_tried_reason TEXT,
+
+  -- Section 4: comfort checklist + open text
+  comfort_marketing          BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_viewings           BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_referencing        BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_tenancy_agreement  BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_inventory          BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_deposit            BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_rent_collection    BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_rent_statements    BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_late_rent          BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_maintenance        BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_inspections        BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_compliance         BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_notices            BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_disputes           BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_council_tax        BOOLEAN NOT NULL DEFAULT FALSE,
+  comfort_remarketing        BOOLEAN NOT NULL DEFAULT FALSE,
+  agent_irreplaceable        TEXT,
+  exit_fee_experience        TEXT,
+
+  -- Section 5: pricing, interest, contact
+  price_expectation  TEXT,
+  interest_scale     TEXT,
+  location           TEXT,
+  email              TEXT,
+  marketing_consent  BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+ALTER TABLE landlord_survey_responses ENABLE ROW LEVEL SECURITY;
+-- All inserts go through the server-side API route using the service role key.
+-- No anon or authenticated policies needed — RLS blocks all direct client access.
