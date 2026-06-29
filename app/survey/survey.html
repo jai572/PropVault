@@ -278,26 +278,171 @@ button.submit:hover { background: #244a3f; }
 
 
 
- </form> <div class="confirm-screen" id="confirmScreen"> <h2>Thank you.</h2> <p>Your answers have been recorded. If you left an email, we'll be in touch when there's something worth showing you.</p> </div> </div> <script> const TASKS = [ { key: "marketing", label: "Finding tenants / marketing the property" }, { key: "viewings", label: "Arranging and conducting viewings (in person, or via a viewing agent)" }, { key: "referencing", label: "Referencing and Right to Rent checks" }, { key: "tenancy_agreement", label: "Drafting the tenancy agreement" }, { key: "inventory", label: "Inventory / check-in and check-out reports" }, { key: "deposit", label: "Registering the deposit" }, { key: "rent_collection", label: "Collecting rent" }, { key: "rent_statements", label: "Monthly rental income/expenditure statements" }, { key: "late_rent", label: "Chasing late rent" }, { key: "maintenance", label: "Arranging repairs and maintenance" }, { key: "inspections", label: "Periodic property inspections" }, { key: "compliance", label: "Tracking gas safety / EICR / EPC compliance" }, { key: "notices", label: "Serving notices (e.g. Notice to Leave)" }, { key: "disputes", label: "Handling disputes" }, { key: "council_tax", label: "Notifying the council of tenancy changes" }, { key: "remarketing", label: "Re-marketing the property at the end of a tenancy" } ]; const FOLLOWUP_OPTIONS = [ { value: "myself", label: "I'd do it myself" }, { value: "new_agent", label: "I'd find a new agent" }, { value: "not_sure", label: "Not sure" }, { value: "wouldnt_bother", label: "I wouldn't bother" } ]; const matrixEl = document.getElementById("taskMatrix"); const checklistEl = document.getElementById("comfortChecklist"); TASKS.forEach(task => { // Section 2 matrix row const row = document.createElement("div"); row.className = "matrix-row"; row.innerHTML = ` <div class="task-label">${task.label}</div> <div class="task-control"> <input type="checkbox" name="task_${task.key}_handled" data-task="${task.key}" class="task-toggle"> </div> `; matrixEl.appendChild(row); const followup = document.createElement("div"); followup.className = "followup"; followup.id = `followup_${task.key}`; followup.innerHTML = ` <label>If this stopped being done for you tomorrow, what would you do?</label> <select name="task_${task.key}_followup"> <option value="">— Select —</option> ${FOLLOWUP_OPTIONS.map(o => `<option value="${o.value}">${o.label}</option>`).join("")} </select> `; matrixEl.appendChild(followup); row.querySelector(".task-toggle").addEventListener("change", (e) => { followup.classList.toggle("visible", e.target.checked); }); // Section 4 checklist const label = document.createElement("label"); label.innerHTML = `<input type="checkbox" name="comfort_${task.key}" value="yes"> ${task.label}`; checklistEl.appendChild(label); }); // Section 3 conditional follow-ups const triedSelfRadios = document.querySelectorAll('input[name="tried_self"]'); const wentBackQ = document.getElementById("wentBackQ"); const stillSelfQ = document.getElementById("stillSelfQ"); const neverTriedQ = document.getElementById("neverTriedQ"); triedSelfRadios.forEach(r => r.addEventListener("change", () => { wentBackQ.style.display = "none"; stillSelfQ.style.display = "none"; neverTriedQ.style.display = "none"; if (r.value === "yes_went_back" && r.checked) wentBackQ.style.display = "block"; if (r.value === "yes_still" && r.checked) stillSelfQ.style.display = "block"; if (r.value === "no" && r.checked) neverTriedQ.style.display = "block"; })); // Section 1 — tools checklist: "None of the above" is exclusive, others show cost question const toolNone = document.getElementById("toolNone"); const toolCostQ = document.getElementById("toolCostQ"); const paidToolToggles = document.querySelectorAll('.tool-toggle:not(#toolNone)'); function updateToolCostVisibility() { const anyPaidChecked = Array.from(paidToolToggles).some(t => t.checked); toolCostQ.style.display = anyPaidChecked ? "block" : "none"; } toolNone.addEventListener("change", () => { if (toolNone.checked) { paidToolToggles.forEach(t => { t.checked = false; }); updateToolCostVisibility(); } }); paidToolToggles.forEach(t => { t.addEventListener("change", () => { if (t.checked) toolNone.checked = false; updateToolCostVisibility(); }); }); // Progress bar (rough, based on scroll through sections) const sections = document.querySelectorAll(".section"); const progressFill = document.getElementById("progressFill"); function updateProgress() { const formTop = document.getElementById("surveyForm").getBoundingClientRect().top; const formHeight = document.getElementById("surveyForm").offsetHeight; const viewportMid = window.innerHeight / 2; const scrolled = Math.min(Math.max((-formTop + viewportMid), 0), formHeight); const pct = Math.min(100, Math.round((scrolled / formHeight) * 100)); progressFill.style.width = pct + "%"; } window.addEventListener("scroll", updateProgress); updateProgress(); // Submit handling — placeholder for now, will be wired to storage later document.getElementById("surveyForm").addEventListener("submit", function (e) { e.preventDefault(); var submitBtn = document.querySelector(".submit"); submitBtn.disabled = true; submitBtn.textContent = "Submitting…"; const formData = new FormData(this);
-        const boolFields = ["tool_spreadsheet","tool_accounting","tool_landlord_software","tool_compliance","tool_other","tool_none","marketing_consent","task_marketing_handled","task_viewings_handled","task_referencing_handled","task_tenancy_agreement_handled","task_inventory_handled","task_deposit_handled","task_rent_collection_handled","task_rent_statements_handled","task_late_rent_handled","task_maintenance_handled","task_inspections_handled","task_compliance_handled","task_notices_handled","task_disputes_handled","task_council_tax_handled","task_remarketing_handled","comfort_marketing","comfort_viewings","comfort_referencing","comfort_tenancy_agreement","comfort_inventory","comfort_deposit","comfort_rent_collection","comfort_rent_statements","comfort_late_rent","comfort_maintenance","comfort_inspections","comfort_compliance","comfort_notices","comfort_disputes","comfort_council_tax","comfort_remarketing"];
-        const payload = {};
-        for (const [key, value] of formData.entries()) { payload[key] = value; }
-        boolFields.forEach(function(f) { payload[f] = f in payload; });
-        fetch("/api/survey", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
-          .then(function(r) { return r.json(); })
-          .then(function(result) {
-            if (result.ok) {
-              document.getElementById("surveyForm").classList.add("hidden");
-              document.getElementById("confirmScreen").classList.add("visible");
-              window.scrollTo(0, 0);
-            } else {
-              submitBtn.disabled = false;
-              submitBtn.textContent = "Submit survey";
-              alert("Something went wrong saving your response. Please try again.");
-            }
-          })
-          .catch(function() {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit survey";
-            alert("Network error. Please check your connection and try again.");
-          }); }); </script> </body> </html>
+ </form> <div class="confirm-screen" id="confirmScreen"> <h2>Thank you.</h2> <p>Your answers have been recorded. If you left an email, we'll be in touch when there's something worth showing you.</p> </div> </div> <script>
+var TASKS = [
+  { key: 'marketing',         label: 'Finding tenants / marketing the property' },
+  { key: 'viewings',          label: 'Arranging and conducting viewings (in person, or via a viewing agent)' },
+  { key: 'referencing',       label: 'Referencing and Right to Rent checks' },
+  { key: 'tenancy_agreement', label: 'Drafting the tenancy agreement' },
+  { key: 'inventory',         label: 'Inventory / check-in and check-out reports' },
+  { key: 'deposit',           label: 'Registering the deposit' },
+  { key: 'rent_collection',   label: 'Collecting rent' },
+  { key: 'rent_statements',   label: 'Monthly rental income/expenditure statements' },
+  { key: 'late_rent',         label: 'Chasing late rent' },
+  { key: 'maintenance',       label: 'Arranging repairs and maintenance' },
+  { key: 'inspections',       label: 'Periodic property inspections' },
+  { key: 'compliance',        label: 'Tracking gas safety / EICR / EPC compliance' },
+  { key: 'notices',           label: 'Serving notices (e.g. Notice to Leave)' },
+  { key: 'disputes',          label: 'Handling disputes' },
+  { key: 'council_tax',       label: 'Notifying the council of tenancy changes' },
+  { key: 'remarketing',       label: 'Re-marketing the property at the end of a tenancy' }
+];
+
+var FOLLOWUP_OPTIONS = [
+  { value: 'myself',         label: "I'd do it myself" },
+  { value: 'new_agent',      label: "I'd find a new agent" },
+  { value: 'not_sure',       label: 'Not sure' },
+  { value: 'wouldnt_bother', label: "I wouldn't bother" }
+];
+
+var matrixEl    = document.getElementById('taskMatrix');
+var checklistEl = document.getElementById('comfortChecklist');
+
+TASKS.forEach(function(task) {
+  // Section 2 — matrix row
+  var row = document.createElement('div');
+  row.className = 'matrix-row';
+  row.innerHTML =
+    '<div class="task-label">' + task.label + '</div>' +
+    '<div class="task-control">' +
+      '<input type="checkbox" name="task_' + task.key + '_handled" data-task="' + task.key + '" class="task-toggle">' +
+    '</div>';
+  matrixEl.appendChild(row);
+
+  var followupOptions = FOLLOWUP_OPTIONS.map(function(o) {
+    return '<option value="' + o.value + '">' + o.label + '</option>';
+  }).join('');
+
+  var followup = document.createElement('div');
+  followup.className = 'followup';
+  followup.id = 'followup_' + task.key;
+  followup.innerHTML =
+    '<label>If this stopped being done for you tomorrow, what would you do?</label>' +
+    '<select name="task_' + task.key + '_followup">' +
+      '<option value="">— Select —</option>' +
+      followupOptions +
+    '</select>';
+  matrixEl.appendChild(followup);
+
+  row.querySelector('.task-toggle').addEventListener('change', function(e) {
+    followup.classList.toggle('visible', e.target.checked);
+  });
+
+  // Section 4 — comfort checklist
+  var lbl = document.createElement('label');
+  lbl.innerHTML = '<input type="checkbox" name="comfort_' + task.key + '" value="yes"> ' + task.label;
+  checklistEl.appendChild(lbl);
+});
+
+// Section 3 — conditional follow-ups
+var triedSelfRadios = document.querySelectorAll('input[name="tried_self"]');
+var wentBackQ   = document.getElementById('wentBackQ');
+var stillSelfQ  = document.getElementById('stillSelfQ');
+var neverTriedQ = document.getElementById('neverTriedQ');
+triedSelfRadios.forEach(function(r) {
+  r.addEventListener('change', function() {
+    wentBackQ.style.display   = 'none';
+    stillSelfQ.style.display  = 'none';
+    neverTriedQ.style.display = 'none';
+    if (r.value === 'yes_went_back') wentBackQ.style.display   = 'block';
+    if (r.value === 'yes_still')     stillSelfQ.style.display  = 'block';
+    if (r.value === 'no')            neverTriedQ.style.display = 'block';
+  });
+});
+
+// Section 1 — tools checklist: "None of the above" is exclusive; others show cost question
+var toolNone        = document.getElementById('toolNone');
+var toolCostQ       = document.getElementById('toolCostQ');
+var paidToolToggles = document.querySelectorAll('.tool-toggle:not(#toolNone)');
+
+function updateToolCostVisibility() {
+  var any = Array.from(paidToolToggles).some(function(t) { return t.checked; });
+  toolCostQ.style.display = any ? 'block' : 'none';
+}
+toolNone.addEventListener('change', function() {
+  if (toolNone.checked) {
+    paidToolToggles.forEach(function(t) { t.checked = false; });
+    updateToolCostVisibility();
+  }
+});
+paidToolToggles.forEach(function(t) {
+  t.addEventListener('change', function() {
+    if (t.checked) toolNone.checked = false;
+    updateToolCostVisibility();
+  });
+});
+
+// Progress bar
+var progressFill = document.getElementById('progressFill');
+function updateProgress() {
+  var form       = document.getElementById('surveyForm');
+  var formTop    = form.getBoundingClientRect().top;
+  var formHeight = form.offsetHeight;
+  var scrolled   = Math.min(Math.max(-formTop + window.innerHeight / 2, 0), formHeight);
+  var pct        = Math.min(100, Math.round((scrolled / formHeight) * 100));
+  progressFill.style.width = pct + '%';
+}
+window.addEventListener('scroll', updateProgress);
+updateProgress();
+
+// Submit handler
+var BOOL_FIELDS = [
+  'tool_spreadsheet','tool_accounting','tool_landlord_software','tool_compliance',
+  'tool_other','tool_none','marketing_consent',
+  'task_marketing_handled','task_viewings_handled','task_referencing_handled',
+  'task_tenancy_agreement_handled','task_inventory_handled','task_deposit_handled',
+  'task_rent_collection_handled','task_rent_statements_handled','task_late_rent_handled',
+  'task_maintenance_handled','task_inspections_handled','task_compliance_handled',
+  'task_notices_handled','task_disputes_handled','task_council_tax_handled',
+  'task_remarketing_handled',
+  'comfort_marketing','comfort_viewings','comfort_referencing','comfort_tenancy_agreement',
+  'comfort_inventory','comfort_deposit','comfort_rent_collection','comfort_rent_statements',
+  'comfort_late_rent','comfort_maintenance','comfort_inspections','comfort_compliance',
+  'comfort_notices','comfort_disputes','comfort_council_tax','comfort_remarketing'
+];
+
+document.getElementById('surveyForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var submitBtn = document.querySelector('.submit');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  var formData = new FormData(this);
+  var payload  = {};
+  formData.forEach(function(value, key) { payload[key] = value; });
+  BOOL_FIELDS.forEach(function(f) { payload[f] = f in payload; });
+
+  fetch('/api/survey', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(result) {
+    if (result.ok) {
+      document.getElementById('surveyForm').classList.add('hidden');
+      document.getElementById('confirmScreen').classList.add('visible');
+      window.scrollTo(0, 0);
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit survey';
+      alert('Something went wrong saving your response. Please try again.');
+    }
+  })
+  .catch(function() {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit survey';
+    alert('Network error. Please check your connection and try again.');
+  });
+});
+</script> </body> </html>
