@@ -203,13 +203,7 @@ button.submit:hover { background: #244a3f; }
 
 <!-- SECTION 4 -->
 <div class="section" data-section="4">
-  <div class="section-head"><span class="num">4</span><h2>What you'd be comfortable handling yourself</h2></div>
-  <div class="section-note">Imagine a tool that walked you through each step — generated the right legal documents, sent automatic reminders, tracked deadlines.</div>
-
-  <div class="q">
-    <label class="q-text">Which of the tasks below would you be comfortable handling yourself, with that kind of support?</label>
-    <div class="check-row" id="comfortChecklist"><!-- injected --></div>
-  </div>
+  <div class="section-head"><span class="num">4</span><h2>Your agent and what they're worth to you</h2></div>
 
   <div class="q">
     <label class="q-text">What's the one thing your agent does that you genuinely could not, or would not want to, do yourself — regardless of any tool?</label>
@@ -305,8 +299,7 @@ var FOLLOWUP_OPTIONS = [
   { value: 'wouldnt_bother', label: "I wouldn't bother" }
 ];
 
-var matrixEl    = document.getElementById('taskMatrix');
-var checklistEl = document.getElementById('comfortChecklist');
+var matrixEl = document.getElementById('taskMatrix');
 
 TASKS.forEach(function(task) {
   // Section 2 — matrix row
@@ -338,10 +331,6 @@ TASKS.forEach(function(task) {
     followup.classList.toggle('visible', e.target.checked);
   });
 
-  // Section 4 — comfort checklist
-  var lbl = document.createElement('label');
-  lbl.innerHTML = '<input type="checkbox" name="comfort_' + task.key + '" value="yes"> ' + task.label;
-  checklistEl.appendChild(lbl);
 });
 
 // Section 3 — conditional follow-ups
