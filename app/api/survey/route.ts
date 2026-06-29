@@ -30,6 +30,8 @@ const TEXT_COLS = new Set([
   'tried_self', 'went_back_reason', 'still_self_reason', 'never_tried_reason',
   'agent_irreplaceable', 'exit_fee_experience',
   'price_expectation', 'interest_scale', 'location', 'email',
+  'adoption_most_annoying', 'adoption_admin_hours', 'adoption_portal_interest',
+  'adoption_top_priority', 'adoption_switching_barrier',
 ])
 
 export async function POST(req: NextRequest) {
