@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropVault — Founding Member</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand: #1a3c5e;
+      --brand-mid: #2d6da4;
+      --brand-light: #e8f1fa;
+      --accent: #f59e0b;
+      --accent-dark: #d97706;
+      --text: #1a202c;
+      --muted: #4a5568;
+      --subtle: #718096;
+      --border: #cbd5e0;
+      --bg: #f7f9fc;
+      --white: #ffffff;
+      --red: #e53e3e;
+      --green: #38a169;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: var(--brand);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .site-header .logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .site-header .logo span { color: var(--accent); }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, var(--brand) 0%, #1e4d7b 100%);
+      color: #fff;
+      padding: 72px 24px 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #7c2d00;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800;
+      line-height: 1.15;
+      max-width: 780px;
+      margin: 0 auto 20px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .hero p {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: rgba(255,255,255,0.85);
+      max-width: 580px;
+      margin: 0 auto 40px;
+    }
+    .hero-cta {
+      display: inline-block;
+      background: var(--accent);
+      color: #1a1a1a;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .hero-cta:hover { background: var(--accent-dark); color: #fff; }
+
+    /* ── Value prop strip ── */
+    .agent-comparison {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 40px 24px;
+    }
+    .comparison-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+    .comparison-col { text-align: center; }
+    .comparison-col .label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--subtle);
+      margin-bottom: 8px;
+    }
+    .comparison-col .price {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .price-agent { color: var(--red); }
+    .price-pv { color: var(--green); }
+    .comparison-col .sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .vs-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--brand-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: var(--brand);
+      flex-shrink: 0;
+      margin: 0 auto;
+    }
+
+    /* ── What PropVault replaces ── */
+    .section {
+      padding: 64px 24px;
+    }
+    .section-inner { max-width: 900px; margin: 0 auto; }
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      color: var(--brand);
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 560px;
+      margin: 0 auto 48px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .feature-icon {
+      font-size: 1.75rem;
+      margin-bottom: 12px;
+    }
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--brand);
+    }
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    /* ── Offer box ── */
+    .offer-section {
+      background: var(--brand-light);
+      padding: 64px 24px;
+    }
+    .offer-card {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #fff;
+      border: 2px solid var(--brand-mid);
+      border-radius: 16px;
+      padding: 40px 40px 48px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(26,60,94,0.12);
+    }
+    .offer-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #7c2d00;
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 24px;
+    }
+    .offer-card h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--brand);
+      margin-bottom: 8px;
+    }
+    .offer-price {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: var(--brand);
+      line-height: 1;
+      margin: 16px 0 4px;
+    }
+    .offer-price span {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .offer-trial {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+    .offer-trial-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    /* ── Form ── */
+    .signup-form { text-align: left; }
+    .form-row {
+      margin-bottom: 16px;
+    }
+    .form-row label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-row input, .form-row select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    .form-row input:focus, .form-row select:focus {
+      outline: none;
+      border-color: var(--brand-mid);
+      box-shadow: 0 0 0 3px rgba(45,109,164,0.12);
+    }
+    .form-row input.error { border-color: var(--red); }
+
+    .field-error {
+      font-size: 0.8rem;
+      color: var(--red);
+      margin-top: 4px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--accent);
+      color: #1a1a1a;
+      font-weight: 800;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover:not(:disabled) { background: var(--accent-dark); color: #fff; }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .form-disclaimer {
+      font-size: 0.78rem;
+      color: var(--subtle);
+      text-align: center;
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+
+    .alert {
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert.visible { display: block; }
+    .alert-error { background: #fff5f5; border: 1px solid #fed7d7; color: var(--red); }
+    .alert-success { background: #f0fff4; border: 1px solid #c6f6d5; color: #276749; }
+
+    /* ── How it works ── */
+    .how-section { background: #fff; }
+    .steps { display: flex; flex-direction: column; gap: 24px; max-width: 640px; margin: 0 auto; }
+    .step { display: flex; gap: 20px; align-items: flex-start; }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-body h3 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .step-body p { font-size: 0.9rem; color: var(--muted); }
+
+    /* ── Footer ── */
+    .site-footer {
+      background: var(--brand);
+      color: rgba(255,255,255,0.65);
+      text-align: center;
+      padding: 24px;
+      font-size: 0.82rem;
+    }
+    .site-footer a { color: rgba(255,255,255,0.85); }
+
+    /* ── Cancelled banner ── */
+    .cancelled-bar {
+      background: #fffbeb;
+      border-bottom: 1px solid #fcd34d;
+      padding: 12px 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #92400e;
+      display: none;
+    }
+    .cancelled-bar.visible { display: block; }
+
+    @media (max-width: 600px) {
+      .comparison-inner { grid-template-columns: 1fr; gap: 16px; }
+      .vs-circle { display: none; }
+      .offer-card { padding: 28px 20px 36px; }
+      .offer-price { font-size: 2.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo">Prop<span>Vault</span></div>
+</header>
+
+<div class="cancelled-bar" id="cancelledBar">
+  Your checkout was cancelled — no payment was taken. You can try again below.
+</div>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-badge">Founding Member Offer</div>
+  <h1>Fire your letting agent.<br><em>Manage your portfolio</em> for £10/month.</h1>
+  <p>PropVault automates the work your agent charges 10–15% of rent to do. PRT generation, compliance tracking, tenancy administration — handled.</p>
+  <a href="#signup" class="hero-cta">Claim your founding member place &darr;</a>
+</section>
+
+<!-- ── Comparison ── -->
+<div class="agent-comparison">
+  <div class="comparison-inner">
+    <div class="comparison-col">
+      <div class="label">Typical letting agent</div>
+      <div class="price price-agent">10–15%</div>
+      <div class="sub">of monthly rent, per property<br>plus per-event fees</div>
+    </div>
+    <div class="vs-circle">VS</div>
+    <div class="comparison-col">
+      <div class="label">PropVault</div>
+      <div class="price price-pv">£10/mo</div>
+      <div class="sub">flat fee, unlimited properties<br>free until 1 October 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── What PropVault replaces ── -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-title">What PropVault replaces</div>
+    <div class="section-sub">Not a property tracker. PropVault does the actual work letting agents charge a percentage to do.</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📄</div>
+        <h3>PRT generation</h3>
+        <p>Scottish Government Model Private Residential Tenancy — generated and populated from your property data. Joint tenancy supported.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🪪</div>
+        <h3>Right to Rent verification</h3>
+        <p>Prospective tenants upload ID documents via a unique secure link. Verification is logged and stored against the tenancy.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✅</div>
+        <h3>Compliance tracking</h3>
+        <p>Gas safety, EICR, EPC, HMO licence — automatic reminders before they expire. No more chasing certificates.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Tenancy administration</h3>
+        <p>End-to-end: onboarding, active tenancy management, maintenance logging, structured end-of-tenancy closure.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Tenant communication</h3>
+        <p>Tenants raise maintenance requests and send messages through a secure portal. All logged automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏠</div>
+        <h3>Multi-entity portfolio</h3>
+        <p>Manage properties across personal ownership and multiple companies from one dashboard, without mixing records.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Offer + Signup ── -->
+<section class="offer-section" id="signup">
+  <div class="offer-card">
+    <div class="offer-badge">Founding Member — Limited Window</div>
+    <h2>Lock in your rate now</h2>
+
+    <div class="offer-price">£10<span>/month</span></div>
+    <div class="offer-trial">&#10003; Free until 1 October 2026</div>
+    <div class="offer-trial-note">No payment until your trial ends. Cancel any time before October and nothing is charged.</div>
+
+    <form class="signup-form" id="signupForm" novalidate>
+      <div class="alert alert-error" id="formError"></div>
+
+      <div class="form-row">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" placeholder="Jane Smith" autocomplete="name" />
+        <div class="field-error" id="nameError">Please enter your name.</div>
+      </div>
+
+      <div class="form-row">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="jane@example.com" autocomplete="email" />
+        <div class="field-error" id="emailError">Please enter a valid email address.</div>
+      </div>
+
+      <div class="form-row">
+        <label for="propertyCount">Number of properties</label>
+        <select id="propertyCount" name="property_count">
+          <option value="" disabled selected>Select&hellip;</option>
+          <option value="1">1 property</option>
+          <option value="2">2 properties</option>
+          <option value="3">3 properties</option>
+          <option value="4-5">4–5 properties</option>
+          <option value="6-10">6–10 properties</option>
+          <option value="11-20">11–20 properties</option>
+          <option value="21+">21 or more</option>
+        </select>
+        <div class="field-error" id="propError">Please select your property count.</div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        Claim my founding member place &rarr;
+      </button>
+
+      <p class="form-disclaimer">
+        You will be taken to a secure Stripe checkout to add your card details.<br>
+        No charge until 1 October 2026. Cancel any time before then — no fee.
+      </p>
+    </form>
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section class="section how-section">
+  <div class="section-inner">
+    <div class="section-title">How it works</div>
+    <div class="section-sub">From signup to managing your portfolio in minutes.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Claim your founding member place</h3>
+          <p>Enter your details and complete the Stripe checkout. Your card is stored but not charged until 1 October 2026.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Get access</h3>
+          <p>You will receive a personal invitation to set up your PropVault account and add your properties.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Replace your agent's work</h3>
+          <p>Add your properties and tenancies. PropVault tracks compliance, generates documents, and manages tenant communication — automatically.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Billing starts 1 October 2026</h3>
+          <p>£10/month flat. Cancel before October and you are never charged. No catch.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <p>&copy; 2026 PropVault &mdash; Scotland-first property management for self-managing landlords.</p>
+  <p style="margin-top:6px">Payments secured by <a href="https://stripe.com" target="_blank" rel="noopener">Stripe</a>.</p>
+</footer>
+
+<script>
+  (function () {
+    // Show cancelled bar if returned from abandoned checkout
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('cancelled') === '1') {
+      document.getElementById('cancelledBar').classList.add('visible');
+    }
+
+    var form = document.getElementById('signupForm');
+    var submitBtn = document.getElementById('submitBtn');
+    var formError = document.getElementById('formError');
+
+    function showFieldError(id, show) {
+      var el = document.getElementById(id);
+      if (show) {
+        el.classList.add('visible');
+      } else {
+        el.classList.remove('visible');
+      }
+    }
+
+    function setInputError(inputId, hasError) {
+      var el = document.getElementById(inputId);
+      if (hasError) {
+        el.classList.add('error');
+      } else {
+        el.classList.remove('error');
+      }
+    }
+
+    function validate() {
+      var name = document.getElementById('name').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var prop = document.getElementById('propertyCount').value;
+      var valid = true;
+
+      var nameInvalid = name.length === 0;
+      var emailInvalid = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      var propInvalid = prop === '';
+
+      showFieldError('nameError', nameInvalid);
+      showFieldError('emailError', emailInvalid);
+      showFieldError('propError', propInvalid);
+      setInputError('name', nameInvalid);
+      setInputError('email', emailInvalid);
+      setInputError('propertyCount', propInvalid);
+
+      return !nameInvalid && !emailInvalid && !propInvalid;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      formError.classList.remove('visible');
+
+      if (!validate()) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Redirecting to checkout…';
+
+      var name = document.getElementById('name').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var prop = document.getElementById('propertyCount').value;
+
+      fetch('/api/founding/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, email: email, property_count: prop })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            formError.textContent = data.error || 'Something went wrong. Please try again.';
+            formError.classList.add('visible');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Claim my founding member place →';
+          }
+        })
+        .catch(function () {
+          formError.textContent = 'Network error. Please check your connection and try again.';
+          formError.classList.add('visible');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Claim my founding member place →';
+        });
+    });
+  })();
+</script>
+</body>
+</html>
