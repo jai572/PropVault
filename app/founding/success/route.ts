@@ -81,8 +81,8 @@ const HTML = `<!DOCTYPE html>
         Billing of <strong>&pound;10/month</strong> begins on 1 October 2026.<br>
         Cancel any time before then &mdash; nothing is charged.
       </div>
-      <p>You&rsquo;ll receive a personal invitation to set up your account and add your properties shortly.</p>
-      <p class="footer-note">Questions? Reply to your confirmation email.</p>
+      <p>Check your email &mdash; a link to set your password has been sent to the address you provided. Click it to access your PropVault account and start adding your properties.</p>
+      <p class="footer-note">Didn&rsquo;t receive the email? Check your spam folder, or reply to your Stripe receipt for help.</p>
     </div>
   </main>
 </body>
