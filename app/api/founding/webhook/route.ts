@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     // 2. Create Supabase Auth account (idempotent — if account already exists this is a no-op)
     const { data: createData, error: createError } = await supabase.auth.admin.createUser({
       email,
-      email_confirm: false, // they will confirm via the password-reset link
+      email_confirm: true,
     })
 
     if (createError && createError.message !== 'User already registered') {
