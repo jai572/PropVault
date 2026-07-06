@@ -23,3 +23,20 @@ export async function signOut() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+export async function requestPasswordReset(
+  _prev: { sent: boolean },
+  formData: FormData
+): Promise<{ sent: boolean }> {
+  const email = (formData.get('email') as string ?? '').trim().toLowerCase()
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { sent: true } // return same shape — don't reveal validation result
+  }
+
+  const supabase = await createClient()
+  // Always returns { sent: true } regardless of outcome — do not reveal whether email exists
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://prop-vault-rho.vercel.app'}/auth/reset-password`,
+  })
+  return { sent: true }
+}

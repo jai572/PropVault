@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useRef } from 'react'
 import { createTenancyAndGeneratePRT, createTenancyWithUpload, type CreateTenancyState } from './actions'
 import Link from 'next/link'
 import type { Property } from '@/types'
@@ -44,6 +44,10 @@ export default function CreateTenancyForm({
 }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(defaultPropertyId ?? '')
+  const [depositAmountVal, setDepositAmountVal] = useState('')
+  const [showDepositConfirm, setShowDepositConfirm] = useState(false)
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // When arriving from the property wizard, co-tenants are already finalised
   const lockedCoTenants = defaultCoTenantIds && defaultCoTenantIds.length > 0
@@ -65,6 +69,8 @@ export default function CreateTenancyForm({
     ? (entityTypes[selectedProperty.legal_entity_id] === 'company')
     : false
 
+  const depositIsEntered = parseFloat(depositAmountVal) > 0
+
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
   const uploadAction   = createTenancyWithUpload.bind(null, tenantId, internalUserId)
 
@@ -79,6 +85,32 @@ export default function CreateTenancyForm({
     setSelectedCoTenantIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     )
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    if (mode === 'upload') {
+      upDispatch(fd)
+      return
+    }
+    // Generate mode: check deposit
+    const raw = (fd.get('deposit_amount') as string ?? '').trim()
+    const val = parseFloat(raw)
+    if (!raw || isNaN(val) || val === 0) {
+      setPendingFormData(fd)
+      setShowDepositConfirm(true)
+      return
+    }
+    genDispatch(fd)
+  }
+
+  function confirmNoDeposit() {
+    setShowDepositConfirm(false)
+    if (pendingFormData) {
+      genDispatch(pendingFormData)
+      setPendingFormData(null)
+    }
   }
 
   if (state.tenancyId && state.tenancyReference) {
@@ -102,6 +134,35 @@ export default function CreateTenancyForm({
 
   return (
     <div className="space-y-5">
+      {/* ── No-deposit confirmation dialog ── */}
+      {showDepositConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900">No deposit amount entered</h2>
+            <p className="text-sm text-gray-600">
+              You have entered no deposit amount. If this tenancy has no deposit, click{' '}
+              <strong>Confirm</strong> to continue. If you meant to enter a deposit amount, click{' '}
+              <strong>Cancel</strong> to return to the form.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={confirmNoDeposit}
+                className="flex-1 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 transition-colors"
+              >
+                Confirm — no deposit
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDepositConfirm(false); setPendingFormData(null) }}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Mode toggle */}
       <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
         <button type="button" onClick={() => setMode('generate')}
@@ -129,7 +190,7 @@ export default function CreateTenancyForm({
           </div>
         )}
 
-        <form action={action} className="space-y-5">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
 
           {/* ── Lead tenant details for PRT (generate mode only) ── */}
           {mode === 'generate' && (
@@ -500,19 +561,29 @@ export default function CreateTenancyForm({
               </label>
               <input id="deposit_amount" name="deposit_amount" type="number" min="0" step="0.01"
                 placeholder="0.00"
+                value={depositAmountVal}
+                onChange={e => setDepositAmountVal(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
               <label htmlFor="deposit_scheme" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Deposit scheme <span className="text-gray-400 font-normal">(optional)</span>
+                Deposit scheme{' '}
+                {depositIsEntered
+                  ? <span className="text-red-500">*</span>
+                  : <span className="text-gray-400 font-normal">(optional)</span>
+                }
               </label>
-              <select id="deposit_scheme" name="deposit_scheme" defaultValue=""
+              <select id="deposit_scheme" name="deposit_scheme" defaultValue="mydeposits Scotland"
+                required={depositIsEntered}
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
               >
                 <option value="">None / not yet</option>
                 {DEPOSIT_SCHEMES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+              {depositIsEntered && (
+                <p className="mt-1 text-xs text-gray-500">Required when a deposit amount is entered.</p>
+              )}
             </div>
           </div>
           <div>

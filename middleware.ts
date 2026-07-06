@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
 
-const PUBLIC_PATHS = ['/login', '/portal', '/survey', '/api/survey', '/founding', '/api/founding']
+const PUBLIC_PATHS = ['/login', '/portal', '/survey', '/api/survey', '/founding', '/api/founding', '/auth/reset-password']
 
 export async function middleware(request: NextRequest) {
   const response = await updateSession(request)
