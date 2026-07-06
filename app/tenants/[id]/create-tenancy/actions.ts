@@ -227,7 +227,7 @@ export async function createTenancyAndGeneratePRT(
 
   const { data: legalEntity } = await supabase
     .from('legal_entities')
-    .select('name, landlord_registration_number, address, email, telephone')
+    .select('name, type, landlord_registration_number, address, email, telephone')
     .eq('id', property.legal_entity_id)
     .single()
   if (!legalEntity) return { error: 'Could not retrieve landlord details for this property.' }
@@ -242,6 +242,14 @@ export async function createTenancyAndGeneratePRT(
   if ('error' in result) return { error: result.error }
 
   const propertyAddress = [property.address_line_1, property.address_line_2, property.city, property.postcode].filter(Boolean).join(', ')
+
+  // Company signatory fields — required when entity type is 'company'
+  const signatoryName     = sanitiseText(formData.get('signatory_name')     as string ?? '') || null
+  const signatoryCapacity = sanitiseText(formData.get('signatory_capacity') as string ?? '') || null
+  if (legalEntity.type === 'company') {
+    if (!signatoryName)     return { error: 'Authorised signatory full name is required for company landlords.' }
+    if (!signatoryCapacity) return { error: 'Signatory capacity (e.g. Director) is required for company landlords.' }
+  }
 
   // Read PRT-specific form fields for lead tenant
   const tenantDob            = sanitiseText(formData.get('tenant_dob')             as string ?? '') || null
@@ -292,6 +300,8 @@ export async function createTenancyAndGeneratePRT(
     landlordAddress: legalEntity.address ?? null,
     landlordEmail: legalEntity.email ?? null,
     landlordTelephone: legalEntity.telephone ?? null,
+    signatoryName: legalEntity.type === 'company' ? (signatoryName ?? null) : null,
+    signatoryCapacity: legalEntity.type === 'company' ? (signatoryCapacity ?? null) : null,
     propertyAddress,
     propertyType,
     furnishedStatus,

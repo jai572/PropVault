@@ -16,6 +16,7 @@ interface Props {
   defaultPropertyId?: string
   defaultCoTenantIds?: string[]
   showEntityName?: boolean
+  entityTypes?: Record<string, 'individual' | 'company'>
 }
 
 const initialState: CreateTenancyState = {}
@@ -39,9 +40,10 @@ function isoToDisplay(iso: string): string {
 
 export default function CreateTenancyForm({
   tenantId, tenantName, tenantEmail, internalUserId, properties, availableCoTenants,
-  defaultPropertyId, defaultCoTenantIds, showEntityName,
+  defaultPropertyId, defaultCoTenantIds, showEntityName, entityTypes = {},
 }: Props) {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate')
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(defaultPropertyId ?? '')
 
   // When arriving from the property wizard, co-tenants are already finalised
   const lockedCoTenants = defaultCoTenantIds && defaultCoTenantIds.length > 0
@@ -57,6 +59,11 @@ export default function CreateTenancyForm({
         .map(sid => availableCoTenants.find(ct => ct.id === sid))
         .filter((ct): ct is typeof availableCoTenants[number] => ct !== undefined)
         .map(ct => `${ct.first_name} ${ct.last_name}`)
+
+  const selectedProperty = properties.find(p => p.id === selectedPropertyId)
+  const isCompanyEntity = selectedProperty
+    ? (entityTypes[selectedProperty.legal_entity_id] === 'company')
+    : false
 
   const generateAction = createTenancyAndGeneratePRT.bind(null, tenantId, internalUserId)
   const uploadAction   = createTenancyWithUpload.bind(null, tenantId, internalUserId)
@@ -369,7 +376,8 @@ export default function CreateTenancyForm({
             <label htmlFor="property_id" className="block text-sm font-medium text-gray-700 mb-1.5">
               Property <span className="text-red-500">*</span>
             </label>
-            <select id="property_id" name="property_id" required defaultValue={defaultPropertyId ?? ''}
+            <select id="property_id" name="property_id" required value={selectedPropertyId}
+              onChange={e => setSelectedPropertyId(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
             >
               <option value="" disabled>Select property…</option>
@@ -408,6 +416,35 @@ export default function CreateTenancyForm({
                     {FURNISHED_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
+              </div>
+            </fieldset>
+          )}
+
+          {/* ── Company signatory (generate mode, company entity only) ── */}
+          {mode === 'generate' && isCompanyEntity && (
+            <fieldset className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <legend className="text-sm font-semibold text-gray-800 px-1">Landlord signatory</legend>
+              <p className="text-xs text-gray-600 -mt-2">
+                This property belongs to a company. Enter the details of the person signing on behalf of the company.
+                The signature block will read: <span className="font-medium">[Full Name], [Capacity], for and on behalf of [Company Name]</span>.
+              </p>
+              <div>
+                <label htmlFor="signatory_name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Authorised signatory full name <span className="text-red-500">*</span>
+                </label>
+                <input id="signatory_name" name="signatory_name" type="text" required autoComplete="off"
+                  placeholder="e.g. Jai Bhalani"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label htmlFor="signatory_capacity" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Capacity <span className="text-red-500">*</span>
+                </label>
+                <input id="signatory_capacity" name="signatory_capacity" type="text" required autoComplete="off"
+                  placeholder="e.g. Director, Company Secretary, Authorised Officer"
+                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
               </div>
             </fieldset>
           )}

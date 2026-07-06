@@ -39,6 +39,9 @@ export interface PRTData {
   depositAmount: number | null
   depositScheme: string | null
   depositReference: string | null
+  // Company signatory — populated only when the landlord legal entity is a company
+  signatoryName: string | null         // authorised signatory full name
+  signatoryCapacity: string | null     // e.g. Director, Company Secretary, Authorised Officer
   // Feature flags
   includeSection37: boolean            // true only for TJ Property Consultants Ltd
 }
@@ -874,14 +877,23 @@ export async function generatePRT(data: PRTData): Promise<Uint8Array> {
   need(c, 90)
   txt(c, 'Landlord Signature', { font: bold })
   gap(c, 4)
-  txt(c, `Full Name (Block Capitals): ${data.landlordName.toUpperCase()}`, { size: SZ_SMALL })
+  if (data.signatoryName && data.signatoryCapacity) {
+    // Company entity — signature line renders as "[Name], [Capacity], for and on behalf of [Company]"
+    const sigLine = `${data.signatoryName.toUpperCase()}, ${data.signatoryCapacity}, for and on behalf of ${data.landlordName}`
+    txt(c, `Authorised Signatory (Block Capitals): ${sigLine}`, { size: SZ_SMALL })
+  } else {
+    txt(c, `Full Name (Block Capitals): ${data.landlordName.toUpperCase()}`, { size: SZ_SMALL })
+  }
   if (data.landlordAddress) txt(c, `Address: ${data.landlordAddress}`, { size: SZ_SMALL })
   if (data.landlordEmail)   txt(c, `Email: ${data.landlordEmail}`, { size: SZ_SMALL })
   gap(c, 8)
   const lsy = c.y
   need(c, 50)
   cp(c).drawLine({ start: { x: MARGIN, y: lsy - 14 }, end: { x: MARGIN + 240, y: lsy - 14 }, thickness: 0.5, color: BLACK })
-  cp(c).drawText('Signature (type full name for digital signing):', { x: MARGIN, y: lsy - 26, size: SZ_SMALL, font: reg, color: GRAY })
+  const sigPrompt = data.signatoryName && data.signatoryCapacity
+    ? 'Signature (authorised signatory — type full name for digital signing):'
+    : 'Signature (type full name for digital signing):'
+  cp(c).drawText(sigPrompt, { x: MARGIN, y: lsy - 26, size: SZ_SMALL, font: reg, color: GRAY })
   cp(c).drawLine({ start: { x: MARGIN, y: lsy - 40 }, end: { x: MARGIN + 120, y: lsy - 40 }, thickness: 0.5, color: BLACK })
   cp(c).drawText('Date:', { x: MARGIN, y: lsy - 52, size: SZ_SMALL, font: reg, color: GRAY })
   c.y = lsy - 60

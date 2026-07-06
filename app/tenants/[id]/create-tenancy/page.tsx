@@ -58,6 +58,16 @@ export default async function CreateTenancyPage({
     'is_hmo' | 'hmo_licence_number' | 'hmo_licence_expiry' | 'has_gas' | 'legal_entity_id'
   >[]
 
+  // Fetch entity types for all properties so the form can show signatory fields for companies
+  const entityIds = [...new Set((propertiesData ?? []).map(p => p.legal_entity_id).filter(Boolean))]
+  const { data: entityData } = entityIds.length > 0
+    ? await supabase.from('legal_entities').select('id, type').in('id', entityIds)
+    : { data: [] }
+  const entityTypes: Record<string, 'individual' | 'company'> = {}
+  for (const e of entityData ?? []) {
+    entityTypes[e.id] = e.type as 'individual' | 'company'
+  }
+
   // Co-tenants always scoped to the lead tenant's own legal entity on this path
   const { data: coTenantData } = tenant.legal_entity_id
     ? await supabase
@@ -97,6 +107,7 @@ export default async function CreateTenancyPage({
         availableCoTenants={availableCoTenants}
         defaultPropertyId={defaultPropertyId}
         defaultCoTenantIds={defaultCoTenantIds}
+        entityTypes={entityTypes}
       />
     </div>
   )
