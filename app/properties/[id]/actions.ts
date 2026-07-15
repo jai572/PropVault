@@ -3,7 +3,53 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { sanitiseText } from '@/lib/utils/sanitise'
+
+const MAX_CERT_SIZE = 20 * 1024 * 1024 // 20MB
+
+export async function uploadDepositCertificate(
+  propertyId: string,
+  tenancyId: string,
+  _prev: { error?: string },
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const file = formData.get('deposit_certificate') as File | null
+  if (!file || file.size === 0) return { error: 'Please select a PDF to upload.' }
+  if (file.type !== 'application/pdf') return { error: 'Only PDF files are accepted.' }
+  if (file.size > MAX_CERT_SIZE) return { error: 'File must be under 20MB.' }
+
+  // Confirm this tenancy belongs to the authenticated landlord
+  const { data: tenancy } = await supabase
+    .from('tenancies')
+    .select('id')
+    .eq('id', tenancyId)
+    .single()
+  if (!tenancy) return { error: 'Tenancy not found or access denied.' }
+
+  const path = `${tenancyId}/deposit-certificate.pdf`
+  const svc  = createServiceClient()
+
+  const { error: uploadError } = await svc.storage
+    .from('deposit-certificates')
+    .upload(path, file, { contentType: 'application/pdf', upsert: true })
+
+  if (uploadError) return { error: 'Upload failed. Please try again.' }
+
+  const { error: updateError } = await supabase
+    .from('tenancies')
+    .update({ deposit_certificate_url: path })
+    .eq('id', tenancyId)
+
+  if (updateError) return { error: 'Could not save certificate reference. Please try again.' }
+
+  revalidatePath(`/properties/${propertyId}`)
+  return {}
+}
 
 export interface FacilityState {
   error?: string

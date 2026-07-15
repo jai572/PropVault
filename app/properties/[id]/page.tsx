@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ComplianceCard } from '@/components/ui/ComplianceCard'
 import PropertyFacilitiesPanel from './PropertyFacilitiesPanel'
 import { ResolveCommButton, CompleteMaintJobButton } from './PropertyChannelActions'
+import DepositCertificateUpload from './DepositCertificateUpload'
 import type { Property, LegalEntity, Reminder, PropertyFacility } from '@/types'
 
 type PropertyWithEntity = Property & {
@@ -22,6 +23,7 @@ type ActiveTenancyData = {
   start_date: string
   rent_amount: number
   rent_due_day: number
+  deposit_certificate_url: string | null
   tenancy_tenants: TenancyTenant[]
 }
 
@@ -177,7 +179,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       .returns<PropertyFacility[]>(),
     supabase
       .from('tenancies')
-      .select('id, tenancy_reference, start_date, rent_amount, rent_due_day, tenancy_tenants(is_lead_tenant, tenants(id, first_name, last_name))')
+      .select('id, tenancy_reference, start_date, rent_amount, rent_due_day, deposit_certificate_url, tenancy_tenants(is_lead_tenant, tenants(id, first_name, last_name))')
       .eq('property_id', id)
       .eq('status', 'active')
       .maybeSingle(),
@@ -355,6 +357,26 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                 </a>
               </div>
             )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-500">Deposit certificate</span>
+              <div className="flex items-center gap-3">
+                {activeTenancy.deposit_certificate_url && (
+                  <a
+                    href={`/api/documents/view?bucket=deposit-certificates&path=${encodeURIComponent(activeTenancy.deposit_certificate_url)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    View →
+                  </a>
+                )}
+                <DepositCertificateUpload
+                  propertyId={id}
+                  tenancyId={activeTenancy.id}
+                  hasExisting={!!activeTenancy.deposit_certificate_url}
+                />
+              </div>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-gray-400">No active tenancy.</p>

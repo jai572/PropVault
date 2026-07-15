@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Only allow known private buckets
-  const ALLOWED_BUCKETS = ['right-to-rent-documents', 'prt-documents']
+  const ALLOWED_BUCKETS = ['right-to-rent-documents', 'prt-documents', 'deposit-certificates']
   if (!ALLOWED_BUCKETS.includes(bucket)) {
     return NextResponse.json({ error: 'Invalid bucket' }, { status: 400 })
   }
