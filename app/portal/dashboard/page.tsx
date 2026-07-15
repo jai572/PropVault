@@ -24,28 +24,14 @@ export default async function TenantDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  console.log('[portal/dashboard] auth.getUser() =>', user ? `id=${user.id} email=${user.email}` : 'null — no session')
-
   if (!user) redirect('/login')
 
   // Look up the tenant record for this auth user
-  console.log('[portal/dashboard] about to query tenants for auth_id:', user.id)
-  let tenant: { id: string; first_name: string; last_name: string } | null = null
-  let tenantError: unknown = null
-  try {
-    const result = await supabase
-      .from('tenants')
-      .select('id, first_name, last_name')
-      .eq('auth_id', user.id)
-      .maybeSingle()
-    tenant = result.data
-    tenantError = result.error
-  } catch (err) {
-    console.log('[portal/dashboard] tenants query THREW:', err)
-    tenantError = err
-  }
-
-  console.log('[portal/dashboard] tenants query => data:', tenant, '| error:', tenantError)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('id, first_name, last_name')
+    .eq('auth_id', user.id)
+    .maybeSingle()
 
   if (!tenant) {
     return (
