@@ -137,10 +137,18 @@ async function insertTenancy(
 async function activateTenant(tenantId: string, tenantEmail: string) {
   const serviceClient = createServiceClient()
   await serviceClient.from('tenants').update({ status: 'active' }).eq('id', tenantId)
-  const { error } = await serviceClient.auth.admin.inviteUserByEmail(tenantEmail, {
+  const { data: inviteData, error } = await serviceClient.auth.admin.inviteUserByEmail(tenantEmail, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/setup-password`,
   })
-  if (error) console.error('Auth invite error:', error)
+  if (error) {
+    console.error('Auth invite error:', error)
+    return
+  }
+  // Write the new auth user ID back to the tenant row so the portal dashboard
+  // can resolve the tenant by auth_id after they log in.
+  if (inviteData?.user?.id) {
+    await serviceClient.from('tenants').update({ auth_id: inviteData.user.id }).eq('id', tenantId)
+  }
 }
 
 // ── Shared setup: auth + tenant validation ────────────────────────────────────
