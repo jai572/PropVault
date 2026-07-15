@@ -138,7 +138,7 @@ async function activateTenant(tenantId: string, tenantEmail: string) {
   const serviceClient = createServiceClient()
   await serviceClient.from('tenants').update({ status: 'active' }).eq('id', tenantId)
   const { error } = await serviceClient.auth.admin.inviteUserByEmail(tenantEmail, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/dashboard`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/setup-password`,
   })
   if (error) console.error('Auth invite error:', error)
 }
