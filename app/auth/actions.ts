@@ -9,13 +9,22 @@ export async function signIn(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) {
+  if (error || !data.user) {
     redirect('/login?error=Invalid+email+or+password')
   }
 
-  redirect('/dashboard')
+  // Check role in public.users. Tenants have no row there — send them to
+  // the tenant portal directly so the session cookie doesn't need to survive
+  // a middleware-initiated double redirect.
+  const { data: landlordRow } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', data.user.id)
+    .maybeSingle()
+
+  redirect(landlordRow ? '/dashboard' : '/portal/dashboard')
 }
 
 export async function signOut() {
