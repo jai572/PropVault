@@ -154,7 +154,7 @@ export default function TenantDashboardPage() {
             <Skeleton />
           ) : prt ? (
             <DocLink
-              href={`/api/documents/view?url=${encodeURIComponent(prt.file_url)}`}
+              href={`/api/documents/view?path=${encodeURIComponent(prt.file_url)}&bucket=prt-documents`}
               label="View / download Private Residential Tenancy"
             />
           ) : (
@@ -168,7 +168,7 @@ export default function TenantDashboardPage() {
             <Skeleton />
           ) : tenancy?.deposit_certificate_url ? (
             <DocLink
-              href={`/api/documents/view?url=${encodeURIComponent(tenancy.deposit_certificate_url)}`}
+              href={`/api/documents/view?path=${encodeURIComponent(tenancy.deposit_certificate_url)}&bucket=deposit-certificates`}
               label="View / download deposit certificate"
             />
           ) : (
