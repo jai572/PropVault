@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
       .select('id, file_url')
       .eq('tenancy_id', tenancy.id as string)
       .eq('type', 'PRT')
+      .not('file_url', 'is', null)
+      .neq('file_url', '')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
