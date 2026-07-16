@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { getTenantProfile, type TenantProfile } from './actions'
+import type { TenantProfile } from './actions'
 
 export default function TenantDashboardPage() {
   const [userId, setUserId] = useState<string | null | 'loading'>('loading')
@@ -17,7 +17,10 @@ export default function TenantDashboardPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user?.id ?? null)
       if (user) {
-        getTenantProfile().then(p => setProfile(p))
+        fetch('/api/portal/me')
+          .then(r => r.json())
+          .then(({ profile }) => setProfile(profile ?? null))
+          .catch(() => setProfile(null))
       } else {
         setProfile(null)
       }
