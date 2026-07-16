@@ -3,7 +3,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export async function signIn(formData: FormData) {
+export async function signIn(
+  _prev: { error?: string; redirectTo?: string },
+  formData: FormData
+): Promise<{ error?: string; redirectTo?: string }> {
   const supabase = await createClient()
 
   const email = formData.get('email') as string
@@ -12,19 +15,17 @@ export async function signIn(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error || !data.user) {
-    redirect('/login?error=Invalid+email+or+password')
+    return { error: 'Invalid email or password' }
   }
 
-  // Check role in public.users. Tenants have no row there — send them to
-  // the tenant portal directly so the session cookie doesn't need to survive
-  // a middleware-initiated double redirect.
+  // Check role in public.users. Tenants have no row there.
   const { data: landlordRow } = await supabase
     .from('users')
     .select('id')
     .eq('auth_id', data.user.id)
     .maybeSingle()
 
-  redirect(landlordRow ? '/dashboard' : '/portal/dashboard')
+  return { redirectTo: landlordRow ? '/dashboard' : '/portal/dashboard' }
 }
 
 export async function signOut() {

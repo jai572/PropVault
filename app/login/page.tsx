@@ -1,20 +1,28 @@
 'use client'
 
-import { useActionState, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useActionState, useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { signIn, requestPasswordReset } from '@/app/auth/actions'
 
 const initialReset = { sent: false }
+const initialSignIn = {}
 
 function LoginForm() {
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
+  const router = useRouter()
 
   const [view, setView] = useState<'signin' | 'forgot'>('signin')
-  const [, signInDispatch, signInPending] = useActionState(
-    async (_prev: void, fd: FormData): Promise<void> => { await signIn(fd) },
-    undefined as void
+  const [signInState, signInDispatch, signInPending] = useActionState(
+    signIn,
+    initialSignIn
   )
+
+  useEffect(() => {
+    if (signInState.redirectTo) {
+      router.push(signInState.redirectTo)
+    }
+  }, [signInState.redirectTo, router])
   const [resetState, resetDispatch, resetPending] = useActionState(requestPasswordReset, initialReset)
 
   return (
@@ -30,9 +38,9 @@ function LoginForm() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           {view === 'signin' ? (
             <>
-              {errorParam && (
+              {(signInState.error || errorParam) && (
                 <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {errorParam}
+                  {signInState.error ?? errorParam}
                 </div>
               )}
 
@@ -60,10 +68,10 @@ function LoginForm() {
                 </div>
 
                 <button
-                  type="submit" disabled={signInPending}
+                  type="submit" disabled={signInPending || !!signInState.redirectTo}
                   className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors"
                 >
-                  {signInPending ? 'Signing in…' : 'Sign in'}
+                  {(signInPending || signInState.redirectTo) ? 'Signing in…' : 'Sign in'}
                 </button>
               </form>
 
