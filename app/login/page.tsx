@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { signIn, requestPasswordReset } from '@/app/auth/actions'
 
 const initialReset = { sent: false }
-const initialSignIn = {}
+const initialSignIn: { error?: string; redirectTo?: string } = {}
 
 function LoginForm() {
   const searchParams = useSearchParams()
