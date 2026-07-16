@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: tenancyError.message, code: tenancyError.code }, { status: 500 })
   }
 
-  const tenancy = (tenancyRow?.tenancy as Record<string, unknown> | null) ?? null
+  const tenancy = (tenancyRow?.tenancy as unknown as Record<string, unknown> | null) ?? null
 
   // PRT document for this tenancy
   let prt: { id: string; file_url: string } | null = null
