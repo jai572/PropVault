@@ -28,6 +28,42 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Resolve the current user's own row and their legal entity links.
+  // Super_admin with no entity links sees an empty portfolio here;
+  // portfolio browsing for other landlords is done via /admin.
+  const { data: usersRow } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('auth_id', user.id)
+    .maybeSingle()
+
+  const { data: entityLinks } = await supabase
+    .from('user_legal_entities')
+    .select('legal_entity_id')
+    .eq('user_id', usersRow?.id ?? '')
+
+  const legalEntityIds = (entityLinks ?? []).map((e) => e.legal_entity_id as string)
+
+  if (legalEntityIds.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Properties</h1>
+          <p className="mt-1 text-sm text-gray-500">No portfolio linked to this account.</p>
+        </div>
+        {usersRow?.role === 'super_admin' && (
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-6 text-sm text-gray-600">
+            You are signed in as <span className="font-medium">super_admin</span>. Use the{' '}
+            <a href="/admin" className="font-medium text-gray-900 underline underline-offset-2">
+              Admin panel
+            </a>{' '}
+            to browse any landlord&apos;s portfolio by User ID or Legal Entity ID.
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const [
     { data: properties, error },
     { data: allTenancies },
@@ -38,6 +74,7 @@ export default async function DashboardPage() {
     supabase
       .from('properties')
       .select('*, legal_entities(name)')
+      .in('legal_entity_id', legalEntityIds)
       .order('legal_entity_id')
       .returns<PropertyWithEntity[]>(),
     supabase.from('tenancies').select('id, property_id'),

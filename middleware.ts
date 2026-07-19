@@ -5,9 +5,11 @@ import { createServerClient } from '@supabase/ssr'
 const PUBLIC_PATHS = ['/login', '/portal', '/survey', '/api/survey', '/founding', '/api/founding', '/auth/reset-password']
 
 // Routes only landlords may access
-const LANDLORD_ONLY_PREFIXES = ['/dashboard', '/properties', '/tenants']
+const LANDLORD_ONLY_PREFIXES = ['/dashboard', '/properties', '/tenants', '/admin']
 // Routes only tenants may access
 const TENANT_ONLY_PREFIXES = ['/portal/dashboard', '/api/portal']
+// Routes requiring super_admin role
+const SUPER_ADMIN_ONLY_PREFIXES = ['/admin']
 
 export async function middleware(request: NextRequest) {
   const response = await updateSession(request)
@@ -52,10 +54,12 @@ export async function middleware(request: NextRequest) {
   const needsLandlordCheck = LANDLORD_ONLY_PREFIXES.some(p => pathname.startsWith(p))
   const needsTenantCheck   = TENANT_ONLY_PREFIXES.some(p => pathname.startsWith(p))
 
+  const needsSuperAdminCheck = SUPER_ADMIN_ONLY_PREFIXES.some(p => pathname.startsWith(p))
+
   if (user && (needsLandlordCheck || needsTenantCheck)) {
     const { data: landlordRow } = await supabase
       .from('users')
-      .select('id')
+      .select('id, role')
       .eq('auth_id', user.id)
       .maybeSingle()
     const isLandlord = !!landlordRow
@@ -69,6 +73,13 @@ export async function middleware(request: NextRequest) {
 
     if (needsTenantCheck && isLandlord) {
       // Landlord trying to access tenant-only routes → send to landlord dashboard
+      const dest = request.nextUrl.clone()
+      dest.pathname = '/dashboard'
+      return NextResponse.redirect(dest)
+    }
+
+    if (needsSuperAdminCheck && landlordRow?.role !== 'super_admin') {
+      // Non-super_admin trying to access admin routes → send to dashboard
       const dest = request.nextUrl.clone()
       dest.pathname = '/dashboard'
       return NextResponse.redirect(dest)

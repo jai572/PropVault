@@ -35,6 +35,14 @@ export default async function AppNav() {
               >
                 Tenants
               </Link>
+              {profile?.role === 'super_admin' && (
+                <Link
+                  href="/admin"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 hover:text-amber-900 transition-colors"
+                >
+                  Admin
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-4">
