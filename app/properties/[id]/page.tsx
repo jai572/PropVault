@@ -7,6 +7,7 @@ import PropertyFacilitiesPanel from './PropertyFacilitiesPanel'
 import { ResolveCommButton, CompleteMaintJobButton } from './PropertyChannelActions'
 import DepositCertificateUpload from './DepositCertificateUpload'
 import RentLedger, { type RentRecord } from './RentLedger'
+import EndTenancyButton from './EndTenancyButton'
 import type { Property, LegalEntity, Reminder, PropertyFacility } from '@/types'
 
 type PropertyWithEntity = Property & {
@@ -376,7 +377,14 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
 
         {activeTenancy ? (
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-2">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Current tenancy</p>
+            <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Current tenancy</p>
+            <EndTenancyButton
+              tenancyId={activeTenancy.id}
+              propertyId={id}
+              tenancyReference={activeTenancy.tenancy_reference}
+            />
+          </div>
             <InfoRow label="Reference"    value={activeTenancy.tenancy_reference} />
             <InfoRow label="Start date"   value={formatDate(activeTenancy.start_date)} />
             <InfoRow
