@@ -39,7 +39,7 @@ BEGIN
     'J Bhalani',
     'N Bhalani',
     'TJ Property Consultants Ltd',
-    'DevArran-II Ltd'
+    'Devarran-II Ltd'
   );
 
   RAISE NOTICE 'Owner account created: id=%, email=jai.owner@propvault.internal', v_owner_id;
