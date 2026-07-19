@@ -28,6 +28,8 @@ type ActiveTenancyData = {
   tenancy_tenants: TenancyTenant[]
 }
 
+type ActiveTenancyScalars = Omit<ActiveTenancyData, 'tenancy_tenants'>
+
 type PastTenancyData = {
   id: string
   tenancy_reference: string
@@ -180,13 +182,13 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       .returns<PropertyFacility[]>(),
     supabase
       .from('tenancies')
-      .select('id, tenancy_reference, start_date, rent_amount, rent_due_day, deposit_certificate_url, tenancy_tenants(is_lead_tenant, tenants(id, first_name, last_name))')
+      .select('id, tenancy_reference, start_date, rent_amount, rent_due_day, deposit_certificate_url')
       .eq('property_id', id)
       .eq('status', 'active')
       .maybeSingle(),
     supabase
       .from('tenancies')
-      .select('id, tenancy_reference, start_date, end_date, closed_at, tenancy_tenants(is_lead_tenant, tenants(id, first_name, last_name))')
+      .select('id, tenancy_reference, start_date, end_date, closed_at')
       .eq('property_id', id)
       .eq('status', 'closed')
       .order('closed_at', { ascending: false })
@@ -209,24 +211,44 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
 
   if (!property) notFound()
 
-  const activeTenancy = activeTenancyRaw  as unknown as ActiveTenancyData | null
-  const pastTenancies = (pastTenanciesRaw  ?? []) as unknown as PastTenancyData[]
-  const maintJobs     = (maintRaw          ?? []) as unknown as MaintJobData[]
-  const viewingJobs   = (viewingRaw        ?? []) as unknown as ViewingJobData[]
-  const tIds          = (allTenancyIdsRaw  ?? []).map((t: { id: string }) => t.id)
+  const activeTenancyScalars = activeTenancyRaw as unknown as ActiveTenancyScalars | null
+  const pastTenanciesRawTyped = (pastTenanciesRaw ?? []) as unknown as Omit<PastTenancyData, 'tenancy_tenants'>[]
+  const maintJobs     = (maintRaw ?? []) as unknown as MaintJobData[]
+  const viewingJobs   = (viewingRaw ?? []) as unknown as ViewingJobData[]
+  const tIds          = (allTenancyIdsRaw ?? []).map((t: { id: string }) => t.id)
 
-  // Flag overdue records before fetching (no-op if none exist)
-  if (activeTenancyRaw) {
-    await supabase.rpc('mark_overdue_rent_records')
+  // Flag overdue records before fetching (no-op if function not yet deployed)
+  if (activeTenancyScalars) {
+    await supabase.rpc('mark_overdue_rent_records').then(
+      ({ error }) => { if (error) console.error('[rent] mark_overdue_rent_records:', error.message) }
+    )
   }
 
-  // Round 2: PRT doc, communications, and rent records (depend on round-1 results)
-  const [{ data: prtDocRaw }, { data: commsRaw }, { data: rentRecordsRaw }] = await Promise.all([
-    activeTenancy
+  // Round 2: joins, PRT doc, communications, rent records (depend on round-1 tenancy id)
+  const [
+    { data: activeTTRaw, error: activeTTError },
+    { data: pastTTRaw },
+    { data: prtDocRaw },
+    { data: commsRaw },
+    { data: rentRecordsRaw },
+  ] = await Promise.all([
+    activeTenancyScalars
+      ? supabase
+          .from('tenancy_tenants')
+          .select('is_lead_tenant, tenants(id, first_name, last_name)')
+          .eq('tenancy_id', activeTenancyScalars.id)
+      : Promise.resolve({ data: [] as TenancyTenant[], error: null }),
+    pastTenanciesRawTyped.length > 0
+      ? supabase
+          .from('tenancy_tenants')
+          .select('tenancy_id, is_lead_tenant, tenants(id, first_name, last_name)')
+          .in('tenancy_id', pastTenanciesRawTyped.map(p => p.id))
+      : Promise.resolve({ data: [] as (TenancyTenant & { tenancy_id: string })[], error: null }),
+    activeTenancyScalars
       ? supabase
           .from('documents')
           .select('file_url')
-          .eq('tenancy_id', activeTenancy.id)
+          .eq('tenancy_id', activeTenancyScalars.id)
           .eq('type', 'PRT')
           .order('created_at', { ascending: false })
           .limit(1)
@@ -239,14 +261,35 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           .in('tenancy_id', tIds)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as CommData[], error: null }),
-    activeTenancyRaw
+    activeTenancyScalars
       ? supabase
           .from('rent_records')
           .select('id, due_date, amount_due, amount_paid, paid_date, status, notes')
-          .eq('tenancy_id', (activeTenancyRaw as { id: string }).id)
+          .eq('tenancy_id', activeTenancyScalars.id)
           .order('due_date', { ascending: true })
       : Promise.resolve({ data: [] as RentRecord[], error: null }),
   ])
+
+  if (activeTTError) {
+    console.error('[property page] tenancy_tenants fetch error:', activeTTError.message, activeTTError.code)
+  }
+
+  // Merge tenancy_tenants back onto the tenancy objects
+  const activeTenancyTenants = (activeTTRaw ?? []) as unknown as TenancyTenant[]
+  const activeTenancy: ActiveTenancyData | null = activeTenancyScalars
+    ? { ...activeTenancyScalars, tenancy_tenants: activeTenancyTenants }
+    : null
+
+  const pastTenantsByTenancy = ((pastTTRaw ?? []) as unknown as (TenancyTenant & { tenancy_id: string })[])
+    .reduce<Record<string, TenancyTenant[]>>((acc, tt) => {
+      ;(acc[tt.tenancy_id] ??= []).push(tt)
+      return acc
+    }, {})
+
+  const pastTenancies: PastTenancyData[] = pastTenanciesRawTyped.map(pt => ({
+    ...pt,
+    tenancy_tenants: pastTenantsByTenancy[pt.id] ?? [],
+  }))
 
   const prtDoc           = prtDocRaw as { file_url: string } | null
   const comms            = (commsRaw ?? []) as CommData[]
