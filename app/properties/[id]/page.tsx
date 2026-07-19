@@ -334,8 +334,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100">
           <div className="px-6 py-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Legal entity</p>
-            <p className="mt-1 text-sm font-medium text-gray-900">{property.legal_entities.name}</p>
-            <p className="text-xs text-gray-400 capitalize">{property.legal_entities.type}</p>
+            <p className="mt-1 text-sm font-medium text-gray-900">{property.legal_entities?.name ?? '—'}</p>
+            <p className="text-xs text-gray-400 capitalize">{property.legal_entities?.type ?? ''}</p>
           </div>
           <div className="px-6 py-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Type</p>
