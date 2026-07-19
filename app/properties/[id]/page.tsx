@@ -6,6 +6,7 @@ import { ComplianceCard } from '@/components/ui/ComplianceCard'
 import PropertyFacilitiesPanel from './PropertyFacilitiesPanel'
 import { ResolveCommButton, CompleteMaintJobButton } from './PropertyChannelActions'
 import DepositCertificateUpload from './DepositCertificateUpload'
+import RentLedger, { type RentRecord } from './RentLedger'
 import type { Property, LegalEntity, Reminder, PropertyFacility } from '@/types'
 
 type PropertyWithEntity = Property & {
@@ -214,8 +215,13 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
   const viewingJobs   = (viewingRaw        ?? []) as unknown as ViewingJobData[]
   const tIds          = (allTenancyIdsRaw  ?? []).map((t: { id: string }) => t.id)
 
-  // Round 2: PRT doc and communications (depend on round-1 results)
-  const [{ data: prtDocRaw }, { data: commsRaw }] = await Promise.all([
+  // Flag overdue records before fetching (no-op if none exist)
+  if (activeTenancyRaw) {
+    await supabase.rpc('mark_overdue_rent_records')
+  }
+
+  // Round 2: PRT doc, communications, and rent records (depend on round-1 results)
+  const [{ data: prtDocRaw }, { data: commsRaw }, { data: rentRecordsRaw }] = await Promise.all([
     activeTenancy
       ? supabase
           .from('documents')
@@ -233,10 +239,18 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           .in('tenancy_id', tIds)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as CommData[], error: null }),
+    activeTenancyRaw
+      ? supabase
+          .from('rent_records')
+          .select('id, due_date, amount_due, amount_paid, paid_date, status, notes')
+          .eq('tenancy_id', (activeTenancyRaw as { id: string }).id)
+          .order('due_date', { ascending: true })
+      : Promise.resolve({ data: [] as RentRecord[], error: null }),
   ])
 
   const prtDoc           = prtDocRaw as { file_url: string } | null
   const comms            = (commsRaw ?? []) as CommData[]
+  const rentRecords      = (rentRecordsRaw ?? []) as RentRecord[]
   const facilities       = facilitiesData ?? []
   const pendingReminders = reminders ?? []
 
@@ -405,6 +419,14 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           </div>
         )}
       </div>
+
+      {/* ── Rent ledger ──────────────────────────────────────────────────── */}
+      {activeTenancy && (
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Rent ledger</h2>
+          <RentLedger records={rentRecords} propertyId={id} />
+        </div>
+      )}
 
       {/* Compliance certificates */}
       <div>
