@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-type SearchParams = Promise<{ userId?: string; entityId?: string }>
+type SearchParams = Promise<{ email?: string; entityName?: string }>
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,50 +64,50 @@ export default async function AdminPage(props: { searchParams: SearchParams }) {
 
   if (usersRow?.role !== 'super_admin') redirect('/dashboard')
 
-  const { userId, entityId } = await props.searchParams
-  const hasSearch = !!(userId?.trim() || entityId?.trim())
+  const { email, entityName } = await props.searchParams
+  const hasSearch = !!(email?.trim() || entityName?.trim())
 
   let result: AdminSearchResult | null = null
   let searchError: string | null = null
 
   if (hasSearch) {
-    // Resolve the legal entity
-    let legalEntity: LegalEntityRow | null = null
-    if (entityId?.trim()) {
+    // Resolve matching legal entities by partial name match
+    let matchedEntities: LegalEntityRow[] = []
+    if (entityName?.trim()) {
       const { data } = await supabase
         .from('legal_entities')
         .select('id, name')
-        .eq('id', entityId.trim())
-        .maybeSingle()
-      legalEntity = data ?? null
+        .ilike('name', `%${entityName.trim()}%`)
+      matchedEntities = data ?? []
     }
+    const legalEntity: LegalEntityRow | null = matchedEntities[0] ?? null
 
-    // Resolve the landlord user row
+    // Resolve the landlord user row by email (exact match)
     let landlord: UsersRow | null = null
-    if (userId?.trim()) {
+    if (email?.trim()) {
       const { data } = await supabase
         .from('users')
         .select('id, name, email, role, legal_entity_id')
-        .eq('id', userId.trim())
+        .eq('email', email.trim().toLowerCase())
         .maybeSingle()
       landlord = data ?? null
-      // If no entity ID given, use the landlord's primary legal entity
+      // If no entity name given, use the landlord's primary legal entity
       if (!legalEntity && landlord?.legal_entity_id) {
         const { data: le } = await supabase
           .from('legal_entities')
           .select('id, name')
           .eq('id', landlord.legal_entity_id)
           .maybeSingle()
-        legalEntity = le ?? null
+        if (le) matchedEntities = [le]
       }
     }
 
-    if (!legalEntity && !landlord) {
-      searchError = 'No matching user or legal entity found. Check the IDs and try again.'
+    if (!legalEntity && matchedEntities.length === 0 && !landlord) {
+      searchError = 'No matching landlord or legal entity found. Check the email or entity name and try again.'
     } else {
       // Determine which entity IDs to scope the property search to.
       // If a landlord is found, also include all entities linked via user_legal_entities.
-      let entityIds: string[] = legalEntity ? [legalEntity.id] : []
+      let entityIds: string[] = matchedEntities.map((e) => e.id)
       if (landlord) {
         const { data: uleRows } = await supabase
           .from('user_legal_entities')
@@ -167,7 +167,7 @@ export default async function AdminPage(props: { searchParams: SearchParams }) {
       ])
 
       result = {
-        legalEntity,
+        legalEntity: matchedEntities[0] ?? null,
         landlord,
         properties: properties ?? [],
         tenancies: tenancies ?? [],
@@ -189,25 +189,26 @@ export default async function AdminPage(props: { searchParams: SearchParams }) {
       {/* Search form */}
       <form method="GET" className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Search by landlord</h2>
+        <p className="text-xs text-gray-500">Fill in one or both fields. Both are combined when provided.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">User ID (UUID)</label>
+            <label className="block text-xs text-gray-500 mb-1">Landlord email address</label>
             <input
-              type="text"
-              name="userId"
-              defaultValue={userId ?? ''}
-              placeholder="e.g. 9a8b7c6d-…"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 font-mono"
+              type="email"
+              name="email"
+              defaultValue={email ?? ''}
+              placeholder="e.g. landlord@example.com"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Legal Entity ID (UUID)</label>
+            <label className="block text-xs text-gray-500 mb-1">Legal entity name (partial match)</label>
             <input
               type="text"
-              name="entityId"
-              defaultValue={entityId ?? ''}
-              placeholder="e.g. 1b2c3d4e-…"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 font-mono"
+              name="entityName"
+              defaultValue={entityName ?? ''}
+              placeholder="e.g. Bhalani or TJ Property"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
         </div>
@@ -246,8 +247,7 @@ export default async function AdminPage(props: { searchParams: SearchParams }) {
             )}
             {result.legalEntity && (
               <p>
-                <span className="font-medium">Legal entity:</span> {result.legalEntity.name}{' '}
-                <span className="font-mono text-xs text-gray-400">({result.legalEntity.id})</span>
+                <span className="font-medium">Legal entity:</span> {result.legalEntity.name}
               </p>
             )}
             <p className="text-gray-500">

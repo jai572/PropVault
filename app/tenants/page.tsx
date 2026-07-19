@@ -23,6 +23,41 @@ export default async function TenantsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Scope to the current user's own legal entities.
+  // Super_admin with no entity links sees nothing here; use /admin for cross-portfolio browsing.
+  const { data: usersRow } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('auth_id', user.id)
+    .maybeSingle()
+
+  const { data: entityLinks } = await supabase
+    .from('user_legal_entities')
+    .select('legal_entity_id')
+    .eq('user_id', usersRow?.id ?? '')
+
+  const legalEntityIds = (entityLinks ?? []).map((e) => e.legal_entity_id as string)
+
+  if (legalEntityIds.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Tenants</h1>
+          <p className="mt-1 text-sm text-gray-500">No portfolio linked to this account.</p>
+        </div>
+        {usersRow?.role === 'super_admin' && (
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-6 text-sm text-gray-600">
+            You are signed in as <span className="font-medium">super_admin</span>. Use the{' '}
+            <a href="/admin" className="font-medium text-gray-900 underline underline-offset-2">
+              Admin panel
+            </a>{' '}
+            to browse any landlord&apos;s tenants by email or legal entity name.
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const { data: tenants, error } = await supabase
     .from('tenants')
     .select('*')
