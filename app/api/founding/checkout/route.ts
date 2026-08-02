@@ -6,7 +6,32 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-06-24.dahlia' })
 }
 
+// Simple in-memory rate limiter: 5 requests per IP per hour.
+// Not shared across Vercel serverless instances — sufficient for a low-traffic
+// public beta. Replace with Redis/Upstash for multi-instance production use.
+const rateLimitMap = new Map<string, number[]>()
+const RATE_LIMIT_MAX = 5
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const windowStart = now - RATE_LIMIT_WINDOW_MS
+  const timestamps = (rateLimitMap.get(ip) ?? []).filter((t) => t > windowStart)
+  if (timestamps.length >= RATE_LIMIT_MAX) return false
+  timestamps.push(now)
+  rateLimitMap.set(ip, timestamps)
+  return true
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 }
+    )
+  }
+
   let body: { name?: unknown; email?: unknown; property_count?: unknown }
   try {
     body = await req.json()
