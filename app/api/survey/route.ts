@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
+const rateLimitMap = new Map<string, number[]>()
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const windowStart = now - RATE_LIMIT_WINDOW_MS
+  const timestamps = (rateLimitMap.get(ip) ?? []).filter((t) => t > windowStart)
+  if (timestamps.length >= RATE_LIMIT_MAX) return false
+  timestamps.push(now)
+  rateLimitMap.set(ip, timestamps)
+  return true
+}
+
 const BOOLEAN_COLS = new Set([
   'tool_spreadsheet', 'tool_accounting', 'tool_landlord_software',
   'tool_compliance', 'tool_other', 'tool_none', 'marketing_consent',
@@ -34,7 +48,17 @@ const TEXT_COLS = new Set([
   'adoption_top_priority', 'adoption_switching_barrier',
 ])
 
+const REQUIRED_TEXT_COLS = new Set(['email'])
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 }
+    )
+  }
+
   let body: Record<string, unknown>
   try {
     body = await req.json()
@@ -47,7 +71,11 @@ export async function POST(req: NextRequest) {
     if (BOOLEAN_COLS.has(key)) {
       row[key] = value === true
     } else if (TEXT_COLS.has(key)) {
-      row[key] = typeof value === 'string' ? value.slice(0, 2000) : null
+      const str = typeof value === 'string' ? value.trim().slice(0, 2000) : null
+      if (REQUIRED_TEXT_COLS.has(key) && (!str || str.length < 1)) {
+        return NextResponse.json({ error: `${key} is required` }, { status: 400 })
+      }
+      row[key] = str
     }
     // Unknown keys are silently dropped
   }

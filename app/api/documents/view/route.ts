@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing path' }, { status: 400 })
   }
 
+  // Reject any path containing '..' before further validation
+  if (path.includes('..')) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
+  }
+
   // path must match {uuid}/{rest} — basic guard against traversal
   const pathPattern = /^[0-9a-f-]{36}\/.+$/i
   if (!pathPattern.test(path)) {
