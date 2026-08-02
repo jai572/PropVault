@@ -31,6 +31,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid bucket' }, { status: 400 })
   }
 
+  // Ownership check — the first path segment is the resource UUID (tenant or tenancy).
+  // Use the RLS-scoped anon client: if the caller cannot see the row, RLS returns null → 403.
+  // This works for both landlord sessions (entity-scoped via user_legal_entities) and
+  // tenant sessions (self-read via current_tenant_id / current_tenant_tenancy_ids).
+  const resourceId = path.split('/')[0]
+
+  if (bucket === 'right-to-rent-documents') {
+    // First segment is a tenant UUID
+    const { data: tenantRow } = await supabase
+      .from('tenants')
+      .select('id')
+      .eq('id', resourceId)
+      .maybeSingle()
+    if (!tenantRow) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } else {
+    // prt-documents and deposit-certificates: first segment is a tenancy UUID
+    const { data: tenancyRow } = await supabase
+      .from('tenancies')
+      .select('id')
+      .eq('id', resourceId)
+      .maybeSingle()
+    if (!tenancyRow) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   const serviceClient = createServiceClient()
 
   const { data, error } = await serviceClient.storage

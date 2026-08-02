@@ -73,20 +73,27 @@ export default async function TenantsPage() {
     )
   }
 
-  // Fetch document counts for all tenants in one query, keyed by tenant_id from path prefix
-  const serviceClient = createServiceClient()
-  const { data: allDocs } = await serviceClient
-    .from('documents')
-    .select('file_url')
-    .eq('type', 'right_to_rent')
-
-  const docCountByTenant = new Map<string, number>()
-  for (const doc of allDocs ?? []) {
-    const tenantId = doc.file_url.split('/')[0]
-    docCountByTenant.set(tenantId, (docCountByTenant.get(tenantId) ?? 0) + 1)
-  }
-
   const list = tenants ?? []
+
+  // Fetch right-to-rent document counts scoped to this user's tenants only.
+  // The documents table has no tenant_id FK so we cannot filter at the DB level;
+  // instead we filter in memory against the tenant IDs already scoped by RLS above.
+  // TODO(security): add tenant_id FK to documents to enable a DB-level filter.
+  const tenantIdSet = new Set(list.map((t) => t.id))
+  const serviceClient = createServiceClient()
+  const docCountByTenant = new Map<string, number>()
+  if (tenantIdSet.size > 0) {
+    const { data: allDocs } = await serviceClient
+      .from('documents')
+      .select('file_url')
+      .eq('type', 'right_to_rent')
+    for (const doc of allDocs ?? []) {
+      const tenantId = doc.file_url.split('/')[0]
+      if (tenantIdSet.has(tenantId)) {
+        docCountByTenant.set(tenantId, (docCountByTenant.get(tenantId) ?? 0) + 1)
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
