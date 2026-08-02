@@ -106,6 +106,7 @@ The solution used throughout this codebase is `SECURITY DEFINER` functions. Thes
 | `current_tenant_id()` | `UUID` | Reads `tenants.id` where `auth_id = auth.uid()` | `tenants_self_read`, `tenancy_tenants_by_landlord` (self branch), `documents_by_legal_entity` (self branch) |
 | `current_landlord_tenancy_ids()` | `SETOF UUID` | Returns all tenancy IDs the current user is landlord for, by looking up `users.id` then `tenancies.landlord_id` | `tenancy_tenants_by_landlord`, `rent_records_by_landlord` |
 | `current_owner_tenant_ids()` | `SETOF UUID` | Returns all tenant IDs reachable through the owner's properties: `tenancy_tenants → tenancies → properties → legal_entity_id` | `tenants_by_legal_entity` |
+| `current_tenant_tenancy_ids()` | `SETOF UUID` | Returns the tenancy IDs the currently authenticated tenant is linked to, by reading `tenancy_tenants` as postgres (bypassing RLS). Allows tenants to read their own tenancy rows without a raw subquery that would re-enter the tenancy_tenants policy. | `tenancies_by_landlord` (tenant self-read branch) |
 | `mark_overdue_rent_records()` | `void` | Updates `rent_records` rows where `due_date < CURRENT_DATE AND status IN ('pending','partial')` to `'overdue'`. Called on page load before fetching rent records. | Called via RPC in `app/properties/[id]/page.tsx` |
 
 ### The circular dependency history
@@ -189,6 +190,7 @@ Migrations must be run in order in the Supabase SQL editor. There is no automati
 | `027` | Add `legal_entities_own_read` SELECT policy so owners can read their own entities | Fixes omission in 025 |
 | `028` | Fix `tenancies_by_landlord` policy: scope by `property_id → properties.legal_entity_id` instead of `landlord_id` | Fixes 025 |
 | `029` | Fix `tenants` RLS cycle via `current_owner_tenant_ids()` SECURITY DEFINER | Fixes cycle introduced by 025 |
+| `030` | Add `current_tenant_tenancy_ids()` SECURITY DEFINER; add tenant self-read branch to `tenancies_by_landlord` policy | Captures changes applied directly in SQL editor |
 
 ---
 
@@ -243,10 +245,11 @@ Migrations must be run in order in the Supabase SQL editor. There is no automati
 
 The following policies were applied directly in the Supabase SQL editor during debugging and are **not reflected in any migration file**. The migration files on disk are therefore inconsistent with the live database for these objects:
 
-- `tenancies_by_landlord` — rebuilt directly to fix the `landlord_id` scoping bug (the file `028_fix_tenancies_rls.sql` captures the intent but may not have been run as a migration).
-- `tenants_by_legal_entity` and `tenants_self_read` — rebuilt directly when fixing cycle 3 (file `029_fix_tenants_rls_cycle.sql`).
-- `legal_entities_own_read` — added directly (file `027_legal_entities_owner_read.sql`).
-- `current_owner_tenant_ids()` function — created directly (file `029_fix_tenants_rls_cycle.sql`).
+- `tenancies_by_landlord` — rebuilt directly multiple times (migrations 028 and 030 capture the final state).
+- `tenants_by_legal_entity` and `tenants_self_read` — rebuilt directly (migration 029 captures the final state).
+- `legal_entities_own_read` — added directly (migration 027 captures this).
+- `current_owner_tenant_ids()` — created directly (migration 029 captures this).
+- `current_tenant_tenancy_ids()` — created directly (migration 030 captures this).
 
 **Before onboarding a second developer or setting up a staging environment, the live policy state should be dumped and reconciled against the migration files.**
 
