@@ -58,6 +58,7 @@ async function insertTenancy(
   args: {
     propertyId: string
     isHmo: boolean
+    jurisdiction: 'scotland' | 'england_wales'
     internalUserId: string
     tenantId: string
     coTenantIds: string[]
@@ -97,7 +98,7 @@ async function insertTenancy(
       deposit_scheme:    args.depositScheme,
       deposit_reference: args.depositReference,
       room_reference:    args.roomReference,
-      jurisdiction:      'scotland',
+      jurisdiction:      args.jurisdiction,
       tenancy_reference: '',
     })
     .select('id, tenancy_reference')
@@ -152,17 +153,20 @@ async function activateTenant(tenantId: string, tenantEmail: string) {
 }
 
 // ── Shared setup: auth + tenant validation ────────────────────────────────────
-async function resolveContext(tenantId: string, internalUserId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
+async function resolveContext(tenantId: string, internalUserId: string, supabase: Awaited<ReturnType<typeof createClient>>, jurisdiction?: 'scotland' | 'england_wales') {
   const { data: tenant } = await supabase
     .from('tenants')
     .select('id, first_name, last_name, email, status, right_to_rent_verified')
     .eq('id', tenantId)
     .single()
 
-  if (!tenant)                          return { error: 'Tenant not found.' }
-  if (!tenant.right_to_rent_verified)   return { error: 'Right to Rent must be verified before creating a tenancy.' }
-  if (tenant.status === 'active')       return { error: 'This tenant already has an active tenancy record.' }
-  if (tenant.status === 'purged')       return { error: 'Cannot create a tenancy for a purged tenant.' }
+  if (!tenant) return { error: 'Tenant not found.' }
+  // Right to Rent check applies to England only
+  if (jurisdiction === 'england_wales' && !tenant.right_to_rent_verified) {
+    return { error: 'Right to Rent must be verified before creating a tenancy for an England property.' }
+  }
+  if (tenant.status === 'active')  return { error: 'This tenant already has an active tenancy record.' }
+  if (tenant.status === 'purged')  return { error: 'Cannot create a tenancy for a purged tenant.' }
 
   const { data: internalUser } = await supabase.from('users').select('id').eq('id', internalUserId).single()
   if (!internalUser) return { error: 'Internal user not found.' }
@@ -173,7 +177,8 @@ async function resolveContext(tenantId: string, internalUserId: string, supabase
 // ── Shared: validate co-tenants and return their records ─────────────────────
 async function resolveCoTenants(
   coTenantIds: string[],
-  supabase: Awaited<ReturnType<typeof createClient>>
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jurisdiction?: 'scotland' | 'england_wales'
 ): Promise<{ coTenants: { id: string; first_name: string; last_name: string; email: string }[] } | { error: string }> {
   if (coTenantIds.length === 0) return { coTenants: [] }
 
@@ -185,8 +190,8 @@ async function resolveCoTenants(
   if (error || !data) return { error: 'Failed to load co-tenant records.' }
 
   for (const ct of data) {
-    if (!ct.right_to_rent_verified) {
-      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} does not have Right to Rent verified. All tenants must be verified before creating a joint tenancy.` }
+    if (jurisdiction === 'england_wales' && !ct.right_to_rent_verified) {
+      return { error: `Co-tenant ${ct.first_name} ${ct.last_name} does not have Right to Rent verified. All tenants must be verified before creating a joint tenancy for an England property.` }
     }
     if (ct.status !== 'prospective' && ct.status !== 'closed') {
       return { error: `Co-tenant ${ct.first_name} ${ct.last_name} has status "${ct.status}" and cannot be added to a new tenancy.` }
@@ -217,21 +222,23 @@ export async function createTenancyAndGeneratePRT(
   const fields = parseFields(formData)
   if (fields.error) return { error: fields.error }
 
-  const ctx = await resolveContext(tenantId, internalUserId, supabase)
+  const { data: property } = await supabase
+    .from('properties')
+    .select('id, address_line_1, address_line_2, city, postcode, is_hmo, hmo_licence_number, hmo_licence_expiry, has_gas, legal_entity_id, jurisdiction')
+    .eq('id', fields.propertyId)
+    .single()
+  if (!property) return { error: 'Property not found or not accessible.' }
+
+  const propertyJurisdiction = ((property as any).jurisdiction ?? 'scotland') as 'scotland' | 'england_wales'
+
+  const ctx = await resolveContext(tenantId, internalUserId, supabase, propertyJurisdiction)
   if ('error' in ctx) return { error: ctx.error }
   const { tenant, internalUser } = ctx
 
   const coTenantIds = (formData.getAll('co_tenant_id') as string[]).filter(Boolean)
-  const coCtx = await resolveCoTenants(coTenantIds, supabase)
+  const coCtx = await resolveCoTenants(coTenantIds, supabase, propertyJurisdiction)
   if ('error' in coCtx) return { error: coCtx.error }
   const { coTenants } = coCtx
-
-  const { data: property } = await supabase
-    .from('properties')
-    .select('id, address_line_1, address_line_2, city, postcode, is_hmo, hmo_licence_number, hmo_licence_expiry, has_gas, legal_entity_id')
-    .eq('id', fields.propertyId)
-    .single()
-  if (!property) return { error: 'Property not found or not accessible.' }
 
   const { data: legalEntity } = await supabase
     .from('legal_entities')
@@ -241,7 +248,7 @@ export async function createTenancyAndGeneratePRT(
   if (!legalEntity) return { error: 'Could not retrieve landlord details for this property.' }
 
   const result = await insertTenancy(supabase, {
-    propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
+    propertyId: property.id, isHmo: property.is_hmo, jurisdiction: propertyJurisdiction, internalUserId: internalUser.id, tenantId,
     coTenantIds,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,
@@ -377,24 +384,26 @@ export async function createTenancyWithUpload(
   if (file.type !== 'application/pdf') return { error: 'The signed PRT must be a PDF file.' }
   if (file.size > MAX_PDF_SIZE) return { error: 'File must be under 20MB.' }
 
-  const ctx = await resolveContext(tenantId, internalUserId, supabase)
-  if ('error' in ctx) return { error: ctx.error }
-  const { tenant, internalUser } = ctx
-
-  const coTenantIds = (formData.getAll('co_tenant_id') as string[]).filter(Boolean)
-  const coCtx = await resolveCoTenants(coTenantIds, supabase)
-  if ('error' in coCtx) return { error: coCtx.error }
-  const { coTenants } = coCtx
-
   const { data: property } = await supabase
     .from('properties')
-    .select('id, is_hmo, legal_entity_id')
+    .select('id, is_hmo, legal_entity_id, jurisdiction')
     .eq('id', fields.propertyId)
     .single()
   if (!property) return { error: 'Property not found or not accessible.' }
 
+  const propertyJurisdiction = ((property as any).jurisdiction ?? 'scotland') as 'scotland' | 'england_wales'
+
+  const ctx = await resolveContext(tenantId, internalUserId, supabase, propertyJurisdiction)
+  if ('error' in ctx) return { error: ctx.error }
+  const { tenant, internalUser } = ctx
+
+  const coTenantIds = (formData.getAll('co_tenant_id') as string[]).filter(Boolean)
+  const coCtx = await resolveCoTenants(coTenantIds, supabase, propertyJurisdiction)
+  if ('error' in coCtx) return { error: coCtx.error }
+  const { coTenants } = coCtx
+
   const result = await insertTenancy(supabase, {
-    propertyId: property.id, isHmo: property.is_hmo, internalUserId: internalUser.id, tenantId,
+    propertyId: property.id, isHmo: property.is_hmo, jurisdiction: propertyJurisdiction, internalUserId: internalUser.id, tenantId,
     coTenantIds,
     startDate: fields.startDate, rentAmount: fields.rentAmount, rentDueDay: fields.rentDueDay,
     depositAmount: fields.depositAmount, depositScheme: fields.depositScheme,

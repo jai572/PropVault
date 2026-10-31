@@ -9,6 +9,7 @@ interface TenantOption {
   last_name: string
   email: string
   status: 'prospective' | 'closed'
+  right_to_rent_verified: boolean
   legal_entity_name?: string | null
 }
 
@@ -16,9 +17,11 @@ interface Props {
   propertyId: string
   availableTenants: TenantOption[]
   showEntityName?: boolean
+  jurisdiction?: 'scotland' | 'england_wales'
 }
 
-export default function TenantSelectionWizard({ propertyId, availableTenants, showEntityName }: Props) {
+export default function TenantSelectionWizard({ propertyId, availableTenants, showEntityName, jurisdiction }: Props) {
+  const isEngland = jurisdiction === 'england_wales'
   const router = useRouter()
   const [step, setStep]           = useState<1 | 2>(1)
   const [count, setCount]         = useState(1)
@@ -66,8 +69,9 @@ export default function TenantSelectionWizard({ propertyId, availableTenants, sh
         </div>
         {availableTenants.length === 0 && (
           <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-            No prospective tenants with verified Right to Rent are available in this legal entity.
-            Add and verify tenant records first.
+            {isEngland
+              ? 'No prospective tenants with verified Right to Rent are available. Add and verify tenant records first.'
+              : 'No prospective tenants available. Add tenant records first.'}
           </p>
         )}
       </div>

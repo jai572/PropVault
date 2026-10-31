@@ -39,6 +39,7 @@ export interface Property {
   epc_expiry: string | null
   gas_safety_expiry: string | null
   eicr_expiry: string | null
+  jurisdiction: 'scotland' | 'england_wales'
   created_at: string
 }
 
