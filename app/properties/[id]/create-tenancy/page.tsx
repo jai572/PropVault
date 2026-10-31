@@ -42,26 +42,21 @@ export default async function PropertyCreateTenancyPage({ params }: Props) {
   const isSuperAdmin = internalUser.role === 'super_admin'
 
   // For England properties: only verified RTR tenants. For Scotland: all prospective/closed.
-  const buildQuery = (base: ReturnType<typeof supabase.from>) => {
-    let q = base.in('status', ['prospective', 'closed']).order('last_name')
-    if (isEngland) q = q.eq('right_to_rent_verified', true)
-    return q
+  let tenantQuery = isSuperAdmin
+    ? supabase.from('tenants').select('id, first_name, last_name, email, status, right_to_rent_verified, legal_entities(name)')
+    : property.legal_entity_id
+      ? supabase.from('tenants').select('id, first_name, last_name, email, status, right_to_rent_verified').eq('legal_entity_id', property.legal_entity_id)
+      : null
+
+  let tenantData: Record<string, unknown>[] = []
+  if (tenantQuery) {
+    let q = tenantQuery.in('status', ['prospective', 'closed']).order('last_name')
+    if (isEngland) q = (q as typeof q).eq('right_to_rent_verified', true)
+    const { data } = await q
+    tenantData = (data ?? []) as Record<string, unknown>[]
   }
 
-  const { data: tenantData } = isSuperAdmin
-    ? await buildQuery(
-        supabase.from('tenants').select('id, first_name, last_name, email, status, right_to_rent_verified, legal_entities(name)')
-      )
-    : property.legal_entity_id
-      ? await buildQuery(
-          supabase
-            .from('tenants')
-            .select('id, first_name, last_name, email, status, right_to_rent_verified')
-            .eq('legal_entity_id', property.legal_entity_id)
-        )
-      : { data: [] }
-
-  const availableTenants: TenantOption[] = (tenantData ?? []).map((t: Record<string, unknown>) => ({
+  const availableTenants: TenantOption[] = tenantData.map((t: Record<string, unknown>) => ({
     id:                      t.id as string,
     first_name:              t.first_name as string,
     last_name:               t.last_name as string,

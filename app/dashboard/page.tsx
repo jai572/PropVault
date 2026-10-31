@@ -64,8 +64,7 @@ export default async function DashboardPage() {
     supabase
       .from('properties')
       .select('id, address_line_1, address_line_2, city, postcode, jurisdiction, has_gas, epc_expiry, gas_safety_expiry, eicr_expiry, is_hmo, hmo_licence_expiry, legal_entity_id')
-      .in('legal_entity_id', legalEntityIds)
-      .returns<Pick<Property, 'id'|'address_line_1'|'address_line_2'|'city'|'postcode'|'jurisdiction'|'has_gas'|'epc_expiry'|'gas_safety_expiry'|'eicr_expiry'|'is_hmo'|'hmo_licence_expiry'|'legal_entity_id'>>(),
+      .in('legal_entity_id', legalEntityIds),
     supabase
       .from('tenancies')
       .select('id, property_id, rent_amount, rent_due_day, jurisdiction')
